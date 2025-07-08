@@ -1,0 +1,78 @@
+[
+  {
+    "employee_id": "EMP001",
+    "name": "Alice Johnson",
+    "department": "Engineering",
+    "role": "Senior Developer",
+    "skills": ["Python", "Machine Learning", "API Development", "Database Design"],
+    "experience_years": 5,
+    "current_workload": 7,
+    "max_capacity": 10,
+    "expertise_areas": ["Backend Development", "Data Engineering"],
+    "preferred_task_types": ["Development", "Code Review", "Architecture"],
+    "availability": {
+      "monday": 8,
+      "tuesday": 8,
+      "wednesday": 6,
+      "thursday": 8,
+      "friday": 4
+    }
+  },
+  {
+    "employee_id": "EMP002",
+    "name": "Bob Smith",
+    "department": "Data Science",
+    "role": "Data Scientist",
+    "skills": ["Python", "R", "Statistical Analysis", "Deep Learning"],
+    "experience_years": 3,
+    "current_workload": 6,
+    "max_capacity": 10,
+    "expertise_areas": ["Predictive Modeling", "Data Visualization"],
+    "preferred_task_types": ["Analysis", "Modeling", "Research"],
+    "availability": {
+      "monday": 8,
+      "tuesday": 8,
+      "wednesday": 8,
+      "thursday": 8,
+      "friday": 8
+    }
+  },
+  {
+    "employee_id": "EMP003",
+    "name": "Carol Davis",
+    "department": "Product",
+    "role": "Product Manager",
+    "skills": ["Project Management", "Requirements Analysis", "User Research"],
+    "experience_years": 7,
+    "current_workload": 8,
+    "max_capacity": 10,
+    "expertise_areas": ["Product Strategy", "User Experience"],
+    "preferred_task_types": ["Planning", "Coordination", "Requirements"],
+    "availability": {
+      "monday": 8,
+      "tuesday": 8,
+      "wednesday": 8,
+      "thursday": 6,
+      "friday": 8
+    }
+  },
+  {
+    "employee_id": "EMP004",
+    "name": "David Wilson",
+    "department": "Engineering",
+    "role": "Frontend Developer",
+    "skills": ["JavaScript", "React", "CSS", "UI/UX Design"],
+    "experience_years": 4,
+    "current_workload": 5,
+    "max_capacity": 10,
+    "expertise_areas": ["Frontend Development", "User Interface"],
+    "preferred_task_types": ["Development", "Design", "Testing"],
+    "availability": {
+      "monday": 8,
+      "tuesday": 8,
+      "wednesday": 8,
+      "thursday": 8,
+      "friday": 6
+    }
+  }
+] 
