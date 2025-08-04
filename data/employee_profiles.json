@@ -1,78 +1,80 @@
 [
   {
-    "employee_id": "EMP001",
-    "name": "Alice Johnson",
-    "department": "Engineering",
-    "role": "Senior Developer",
-    "skills": ["Python", "Machine Learning", "API Development", "Database Design"],
-    "experience_years": 5,
-    "current_workload": 7,
-    "max_capacity": 10,
-    "expertise_areas": ["Backend Development", "Data Engineering"],
-    "preferred_task_types": ["Development", "Code Review", "Architecture"],
-    "availability": {
-      "monday": 8,
-      "tuesday": 8,
-      "wednesday": 6,
-      "thursday": 8,
-      "friday": 4
-    }
-  },
-  {
-    "employee_id": "EMP002",
-    "name": "Bob Smith",
-    "department": "Data Science",
-    "role": "Data Scientist",
-    "skills": ["Python", "R", "Statistical Analysis", "Deep Learning"],
-    "experience_years": 3,
-    "current_workload": 6,
-    "max_capacity": 10,
-    "expertise_areas": ["Predictive Modeling", "Data Visualization"],
-    "preferred_task_types": ["Analysis", "Modeling", "Research"],
-    "availability": {
-      "monday": 8,
-      "tuesday": 8,
-      "wednesday": 8,
-      "thursday": 8,
-      "friday": 8
-    }
-  },
-  {
-    "employee_id": "EMP003",
-    "name": "Carol Davis",
-    "department": "Product",
-    "role": "Product Manager",
-    "skills": ["Project Management", "Requirements Analysis", "User Research"],
-    "experience_years": 7,
-    "current_workload": 8,
-    "max_capacity": 10,
-    "expertise_areas": ["Product Strategy", "User Experience"],
-    "preferred_task_types": ["Planning", "Coordination", "Requirements"],
-    "availability": {
-      "monday": 8,
-      "tuesday": 8,
-      "wednesday": 8,
-      "thursday": 6,
-      "friday": 8
-    }
-  },
-  {
-    "employee_id": "EMP004",
-    "name": "David Wilson",
-    "department": "Engineering",
-    "role": "Frontend Developer",
-    "skills": ["JavaScript", "React", "CSS", "UI/UX Design"],
-    "experience_years": 4,
+    "id": "emp_001",
+    "name": "John Developer",
+    "role": "Software Developer",
+    "skills": ["python", "javascript", "react", "node.js", "sql"],
+    "expertise_areas": ["web development", "api development", "database design"],
+    "preferred_task_types": ["development", "bug fix", "optimization"],
     "current_workload": 5,
     "max_capacity": 10,
-    "expertise_areas": ["Frontend Development", "User Interface"],
-    "preferred_task_types": ["Development", "Design", "Testing"],
-    "availability": {
-      "monday": 8,
-      "tuesday": 8,
-      "wednesday": 8,
-      "thursday": 8,
-      "friday": 6
-    }
+    "experience_years": 5,
+    "location": "San Francisco",
+    "availability": "full-time"
+  },
+  {
+    "id": "emp_002",
+    "name": "Sarah Designer",
+    "role": "UI/UX Designer",
+    "skills": ["figma", "adobe", "sketch", "prototyping", "user research"],
+    "expertise_areas": ["user interface", "user experience", "visual design"],
+    "preferred_task_types": ["design", "prototype", "user research"],
+    "current_workload": 3,
+    "max_capacity": 8,
+    "experience_years": 4,
+    "location": "New York",
+    "availability": "full-time"
+  },
+  {
+    "id": "emp_003",
+    "name": "Mike Tester",
+    "role": "QA Engineer",
+    "skills": ["testing", "automation", "selenium", "junit", "cypress"],
+    "expertise_areas": ["quality assurance", "test automation", "manual testing"],
+    "preferred_task_types": ["testing", "qa", "bug fix"],
+    "current_workload": 4,
+    "max_capacity": 8,
+    "experience_years": 3,
+    "location": "Austin",
+    "availability": "full-time"
+  },
+  {
+    "id": "emp_004",
+    "name": "Lisa DevOps",
+    "role": "DevOps Engineer",
+    "skills": ["docker", "kubernetes", "aws", "jenkins", "terraform"],
+    "expertise_areas": ["deployment", "infrastructure", "cloud services"],
+    "preferred_task_types": ["deployment", "infrastructure", "optimization"],
+    "current_workload": 6,
+    "max_capacity": 10,
+    "experience_years": 6,
+    "location": "Seattle",
+    "availability": "full-time"
+  },
+  {
+    "id": "emp_005",
+    "name": "David Product",
+    "role": "Product Manager",
+    "skills": ["product strategy", "user research", "agile", "jira", "analytics"],
+    "expertise_areas": ["product management", "user research", "market analysis"],
+    "preferred_task_types": ["feature", "research", "documentation"],
+    "current_workload": 7,
+    "max_capacity": 10,
+    "experience_years": 7,
+    "location": "Boston",
+    "availability": "full-time"
+  },
+  {
+    "id": "emp_006",
+    "name": "Emma Data",
+    "role": "Data Scientist",
+    "skills": ["python", "r", "sql", "machine learning", "statistics"],
+    "expertise_areas": ["data analysis", "machine learning", "predictive modeling"],
+    "preferred_task_types": ["analysis", "optimization", "feature"],
+    "current_workload": 4,
+    "max_capacity": 8,
+    "experience_years": 4,
+    "location": "Chicago",
+    "availability": "full-time"
   }
-] 
+]

@@ -2,664 +2,432 @@
 Streamlit Dashboard for AI Task Management System
 """
 
-import streamlit as st
+import dash
+from dash import dcc, html, Input, Output, State, dash_table
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import sys
+import joblib
 import os
-from datetime import datetime, timedelta
-import json
+import numpy as np
 
-# Add src directory to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Load models
+classifier = joblib.load("models/classifier.pkl")
+priority_model = joblib.load("models/priority_model.pkl")
 
-try:
-    from src.utils import load_employee_profiles, connect_db, create_tasks_table
-    from src.preprocessing import TaskDataPreprocessor
-    from src.priority_model import TaskPriorityModel, create_sample_priority_data
-    from src.task_assigner import IntelligentTaskAssigner
-except ImportError:
-    st.error("Could not import required modules. Please ensure all dependencies are installed.")
-    st.stop()
+# Load employee profile
+with open("data/employee_profiles.json", "r") as f:
+    import json
+    employee_profiles = json.load(f)
 
-# Page configuration
-st.set_page_config(
-    page_title="AI Task Management System",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
+# Import necessary tools for React components
+from dash_local_react_components import load_react_component
+
+# Load custom React components
+ReactComponentHero = load_react_component(app, 'components', 'HeroSection.js')
+ReactComponentTabs = load_react_component(app, 'components', 'TabsSection.js')
+
+# Initialize app
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app.title = "AI Task Manager"
+
+# Custom CSS for better styling
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AI Task Manager</title>
+        <style>
+            .dash-tab {
+                background-color: #f8f9fa !important;
+                border: 1px solid #dee2e6 !important;
+                border-radius: 8px 8px 0 0 !important;
+                margin-right: 5px !important;
+                padding: 12px 20px !important;
+                font-weight: 500 !important;
+                color: #495057 !important;
+            }
+            .dash-tab--selected {
+                background-color: #007bff !important;
+                color: white !important;
+                border-color: #007bff !important;
+            }
+            .dash-tab:hover {
+                background-color: #e9ecef !important;
+                color: #495057 !important;
+            }
+            .dash-tab--selected:hover {
+                background-color: #0056b3 !important;
+                color: white !important;
+            }
+            .upload-area {
+                border: 2px dashed #007bff !important;
+                border-radius: 10px !important;
+                background-color: #f8f9fa !important;
+                transition: all 0.3s ease !important;
+            }
+            .upload-area:hover {
+                border-color: #0056b3 !important;
+                background-color: #e3f2fd !important;
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
+# In the app.layout, within ReactComponentTabs, replace the analytics tab content with AnalyticsSection
+app.layout = html.Div([
+    ReactComponentHero(),
+    ReactComponentTabs([
+        dcc.Tab(label='📤 Upload & Predict', children=[
+            html.H3("Upload Tasks (.csv)"),
+            dcc.Upload(
+                id='upload-data',
+                children=html.Div([
+                    html.I(className="fas fa-cloud-upload-alt", style={'fontSize': '2rem', 'color': '#007bff', 'marginBottom': '10px'}),
+                    html.Br(),
+                    html.Span("Drag and Drop or ", style={'fontSize': '1.1rem'}),
+                    html.A("Select Files", style={'color': '#007bff', 'textDecoration': 'underline'}),
+                    html.Br(),
+                    html.Span("(CSV format)", style={'fontSize': '0.9rem', 'color': '#6c757d', 'marginTop': '5px'})
+                ]),
+                style={
+                    'width': '100%',
+                    'height': '120px',
+                    'lineHeight': '60px',
+                    'borderWidth': '2px',
+                    'borderStyle': 'dashed',
+                    'borderRadius': '10px',
+                    'textAlign': 'center',
+                    'margin': '20px 0',
+                    'backgroundColor': '#f8f9fa',
+                    'borderColor': '#007bff',
+                    'transition': 'all 0.3s ease'
+                },
+                multiple=False
+            ),
+            html.Div(id='file-name-display'),
+            html.Div(id='status-msg'),
+            
+            # Assignment Method Toggle
+            html.Div([
+                html.Label("Assignment Method:", style={'fontWeight': 'bold', 'marginTop': '20px'}),
+                dcc.RadioItems(
+                    id='assign-method',
+                    options=[
+                        {'label': ' 🎯 Rule-based', 'value': 'rule'},
+                        {'label': ' 🤖 ML-based (coming soon)', 'value': 'ml'}
+                    ],
+                    value='rule',
+                    inline=True,
+                    style={'marginTop': '10px'}
+                )
+            ], style={'marginTop': '20px', 'padding': '15px', 'backgroundColor': '#f8f9fa', 'borderRadius': '8px'}),
+            
+            # Category Filter Dropdown
+            html.Div([
+                html.Label("Filter by Category:", style={'fontWeight': 'bold', 'marginTop': '20px'}),
+                dcc.Dropdown(
+                    id='category-filter',
+                    placeholder='Select task categories',
+                    multi=True,
+                    style={'marginTop': '10px'}
+                )
+            ], style={'marginTop': '20px', 'padding': '15px', 'backgroundColor': '#f8f9fa', 'borderRadius': '8px'}),
+            
+            html.Div(id='output-data-upload')
+        ]),
+
+        dcc.Tab(label='📊 Analytics', children=[
+            AnalyticsSection(
+                metrics=[
+                    {'label': 'Total Tasks', 'value': 100},  # Demo value; replace with dynamic data later
+                    {'label': 'High Priority', 'value': 30},  # Demo value; replace with dynamic data later
+                    {'label': 'Team Utilization', 'value': '75%'},  # Demo value
+                    {'label': 'Avg Completion Time', 'value': '5.2 days'}  # Demo value
+                ],
+                children=[
+                    html.Div([
+                        html.H3("Comprehensive Analytics Dashboard"),
+                        html.Div([
+                            html.Div([
+                                html.H4("Total Tasks"),
+                                html.H2(id="total-tasks")
+                            ], style={'display': 'inline-block', 'width': '24%', 'margin': '1%'}),
+                            html.Div([
+                                html.H4("High Priority"),
+                                html.H2(id="high-priority")
+                            ], style={'display': 'inline-block', 'width': '24%', 'margin': '1%'}),
+                            html.Div([
+                                html.H4("Team Utilization"),
+                                html.H2(id="team-utilization")
+                            ], style={'display': 'inline-block', 'width': '24%', 'margin': '1%'}),
+                            html.Div([
+                                html.H4("Avg Completion Time"),
+                                html.H2(id="avg-completion")
+                            ], style={'display': 'inline-block', 'width': '24%', 'margin': '1%'})
+                        ], style={'width': '100%', 'display': 'flex', 'justifyContent': 'space-between'}),
+                    ], className="mb-4"),
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(id='priority-distribution')
+                        ], style={'width': '48%', 'display': 'inline-block'}),
+                        html.Div([
+                            dcc.Graph(id='category-distribution')
+                        ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'})
+                    ]),
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(id='workload-chart')
+                        ], style={'width': '48%', 'display': 'inline-block'}),
+                        html.Div([
+                            dcc.Graph(id='performance-trend')
+                        ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'})
+                    ]),
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(id='employee-skills-radar')
+                        ], style={'width': '48%', 'display': 'inline-block'}),
+                        html.Div([
+                            dcc.Graph(id='task-completion-timeline')
+                        ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'})
+                    ]),
+                    html.Div([
+                        html.H4("Task Status Timeline"),
+                        dcc.Graph(id='task-timeline')
+                    ])
+                ]
+            )
+        ])
+    ]),
+    html.Hr(style={'margin': '20px 0', 'borderColor': '#e9ecef'})
+])
+
+# --- Analytics Data Preparation (Simulated for Demo) ---
+def get_demo_task_data():
+    # Simulate a DataFrame of tasks
+    np.random.seed(42)
+    n_tasks = 100
+    employees = [emp['name'] for emp in employee_profiles]
+    categories = ['Bug', 'Feature', 'Improvement', 'Research']
+    priorities = ['Low', 'Medium', 'High']
+    statuses = ['Pending', 'In Progress', 'Completed']
+
+    df = pd.DataFrame({
+        'task_id': range(1, n_tasks + 1),
+        'employee': np.random.choice(employees, n_tasks),
+        'category': np.random.choice(categories, n_tasks),
+        'priority': np.random.choice(priorities, n_tasks, p=[0.2, 0.5, 0.3]),
+        'status': np.random.choice(statuses, n_tasks, p=[0.2, 0.5, 0.3]),
+        'completion_time': np.random.normal(5, 2, n_tasks).clip(1, 10),
+        'created_at': pd.date_range('2024-01-01', periods=n_tasks, freq='D')
+    })
+    return df
+
+# --- Analytics Callbacks ---
+@app.callback(
+    Output('total-tasks', 'children'),
+    Output('high-priority', 'children'),
+    Output('team-utilization', 'children'),
+    Output('avg-completion', 'children'),
+    Output('priority-distribution', 'figure'),
+    Output('category-distribution', 'figure'),
+    Output('workload-chart', 'figure'),
+    Output('performance-trend', 'figure'),
+    Output('employee-skills-radar', 'figure'),
+    Output('task-completion-timeline', 'figure'),
+    Output('task-timeline', 'figure'),
+    Input('analytics-content', 'id')
 )
+def update_analytics(_):
+    df = get_demo_task_data()
+    # Metrics
+    total_tasks = len(df)
+    high_priority = (df['priority'] == 'High').sum()
+    team_util = f"{(df['employee'].nunique() / len(employee_profiles)) * 100:.1f}%"
+    avg_completion = f"{df['completion_time'].mean():.2f} days"
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 0.5rem 0;
-    }
-    .stAlert {
-        margin-top: 1rem;
-    }
-</style>
-""", unsafe_allow_html=True)
+    # Priority Distribution
+    fig_priority = px.pie(df, names='priority', title='Task Priority Distribution')
 
-def initialize_database():
-    """Initialize database with sample data if needed"""
-    try:
-        conn = connect_db()
-        create_tasks_table(conn)
-        
-        # Check if we have any tasks
-        cursor = conn.execute("SELECT COUNT(*) FROM tasks")
-        count = cursor.fetchone()[0]
-        
-        if count == 0:
-            # Create sample tasks
-            sample_tasks = [
+    # Category Distribution
+    fig_category = px.bar(df['category'].value_counts().reset_index(),
+                          x='index', y='category',
+                          labels={'index': 'Category', 'category': 'Count'},
+                          title='Task Category Distribution')
+
+    # Workload Chart
+    workload = df.groupby('employee').size().reset_index(name='tasks')
+    fig_workload = px.bar(workload, x='employee', y='tasks', title='Workload per Employee')
+
+    # Performance Trend
+    perf_trend = df.groupby('created_at')['completion_time'].mean().reset_index()
+    fig_perf = px.line(perf_trend, x='created_at', y='completion_time', title='Avg Completion Time Over Time')
+
+    # Employee Skills Radar (simulated)
+    skill_set = set(skill for emp in employee_profiles for skill in emp.get('skills', []))
+    radar_data = []
+    for emp in employee_profiles:
+        radar_data.append({
+            'employee': emp['name'],
+            **{skill: int(skill in emp.get('skills', [])) for skill in skill_set}
+        })
+    radar_df = pd.DataFrame(radar_data)
+    fig_radar = go.Figure()
+    for i, row in radar_df.iterrows():
+        fig_radar.add_trace(go.Scatterpolar(
+            r=row[list(skill_set)].values,
+            theta=list(skill_set),
+            fill='toself',
+            name=row['employee']
+        ))
+    fig_radar.update_layout(title='Employee Skills Radar', polar=dict(radialaxis=dict(visible=True)))
+
+    # Task Completion Timeline
+    completed = df[df['status'] == 'Completed']
+    timeline = completed.groupby('created_at').size().reset_index(name='completed')
+    fig_timeline = px.bar(timeline, x='created_at', y='completed', title='Tasks Completed Over Time')
+
+    # Task Status Timeline
+    status_timeline = df.groupby(['created_at', 'status']).size().reset_index(name='count')
+    fig_status_timeline = px.area(status_timeline, x='created_at', y='count', color='status', title='Task Status Timeline')
+
+    return (str(total_tasks), str(high_priority), team_util, avg_completion,
+            fig_priority, fig_category, fig_workload, fig_perf, fig_radar, fig_timeline, fig_status_timeline)
+
+# --- Existing Upload & Predict logic remains unchanged ---
+
+def preprocess_and_predict(df):
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    tfidf = joblib.load("models/tfidf_vectorizer.pkl")  # Assume saved during training
+
+    # Preprocess
+    X = tfidf.transform(df['description'])
+    df['category'] = classifier.predict(X)
+    df['priority'] = priority_model.predict(X)
+    return df
+
+def assign_task(task_row):
+    best_employee = None
+    max_match = -1
+    for emp in employee_profiles:
+        if emp['current_tasks'] >= emp['max_tasks']:
+            continue
+        match = len(set(emp['skills']) & set(task_row['description'].lower().split()))
+        if match > max_match:
+            best_employee = emp['name']
+            max_match = match
+    return best_employee if best_employee else "Unassigned"
+
+@app.callback(
+    Output('output-data-upload', 'children'),
+    Output('file-name-display', 'children'),
+    Output('status-msg', 'children'),
+    Output('category-filter', 'options'),
+    Input('upload-data', 'contents'),
+    State('upload-data', 'filename'),
+    State('assign-method', 'value'),
+    State('category-filter', 'value')
+)
+def update_output(contents, filename, assign_method, category_filter):
+    if contents is None:
+        return html.Div(), html.Div(), html.Div(), []
+
+    import base64
+    import io
+
+    content_type, content_string = contents.split(',')
+    decoded = base64.b64decode(content_string)
+    df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+
+    # File name display
+    file_display = html.Div(f"✅ Uploaded: {filename}", style={
+        'color': '#28a745',
+        'fontWeight': 'bold',
+        'margin': '10px 0',
+        'padding': '10px',
+        'backgroundColor': '#d4edda',
+        'borderRadius': '5px',
+        'border': '1px solid #c3e6cb'
+    })
+
+    # Status message
+    status_msg = html.Div("✅ File uploaded successfully! Processing tasks...", style={
+        'color': '#155724',
+        'backgroundColor': '#d4edda',
+        'border': '1px solid #c3e6cb',
+        'borderRadius': '5px',
+        'padding': '10px',
+        'margin': '10px 0'
+    })
+
+    # Process the data
+    df = preprocess_and_predict(df)
+    
+    # Apply assignment method
+    if assign_method == 'rule':
+        df['assigned_to'] = df.apply(assign_task, axis=1)
+    else:
+        df['assigned_to'] = "ML Assignment (Coming Soon)"
+
+    # Apply category filter if selected
+    if category_filter:
+        df = df[df['category'].isin(category_filter)]
+
+    # Create category options for dropdown
+    category_options = [{'label': cat, 'value': cat} for cat in df['category'].unique()]
+
+    # Create visualizations
+    fig_priority = px.pie(df, names='priority', title='Task Priority Distribution')
+    fig_category = px.bar(df['category'].value_counts().reset_index(),
+                          x='index', y='category',
+                          title='Task Category Distribution')
+
+    return html.Div([
+        html.H4("Predicted & Assigned Tasks"),
+        html.Div([
+            html.P(f"📊 Total Tasks: {len(df)}", style={'fontWeight': 'bold'}),
+            html.P(f"🎯 Assignment Method: {assign_method.upper()}", style={'fontWeight': 'bold'}),
+            html.P(f"📁 File: {filename}", style={'fontWeight': 'bold'})
+        ], style={'backgroundColor': '#f8f9fa', 'padding': '15px', 'borderRadius': '8px', 'marginBottom': '20px'}),
+        dash_table.DataTable(
+            data=df.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in df.columns],
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left'},
+            style_header={
+                'backgroundColor': '#007bff',
+                'color': 'white',
+                'fontWeight': 'bold'
+            },
+            style_data_conditional=[
                 {
-                    'title': 'Implement user authentication',
-                    'description': 'Develop secure user login and registration system with JWT tokens',
-                    'category': 'security',
-                    'estimated_hours': 16,
-                    'deadline': (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d'),
-                    'status': 'pending'
-                },
-                {
-                    'title': 'Fix database performance issue',
-                    'description': 'Optimize slow running queries in the user management module',
-                    'category': 'bug',
-                    'estimated_hours': 8,
-                    'deadline': (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d'),
-                    'status': 'pending'
-                },
-                {
-                    'title': 'Design new dashboard layout',
-                    'description': 'Create modern responsive dashboard design with improved UX',
-                    'category': 'design',
-                    'estimated_hours': 20,
-                    'deadline': (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d'),
-                    'status': 'pending'
+                    'if': {'row_index': 'odd'},
+                    'backgroundColor': '#f8f9fa'
                 }
             ]
-            
-            for task in sample_tasks:
-                conn.execute("""
-                    INSERT INTO tasks (title, description, category, estimated_hours, deadline, status)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (task['title'], task['description'], task['category'], 
-                     task['estimated_hours'], task['deadline'], task['status']))
-            
-            conn.commit()
-            st.success("Sample tasks created!")
-        
-        conn.close()
-        return True
-        
-    except Exception as e:
-        st.error(f"Database initialization error: {e}")
-        return False
-
-def load_data():
-    """Load task data and employee profiles"""
-    try:
-        # Load tasks from database
-        conn = connect_db()
-        tasks_df = pd.read_sql_query("SELECT * FROM tasks", conn)
-        conn.close()
-        
-        # Load employee profiles
-        employee_profiles = load_employee_profiles()
-        
-        return tasks_df, employee_profiles
-    
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return pd.DataFrame(), []
-
-def preprocess_data(tasks_df):
-    """Preprocess task data"""
-    if tasks_df.empty:
-        return tasks_df
-    
-    try:
-        preprocessor = TaskDataPreprocessor()
-        processed_df = preprocessor.fit_transform(tasks_df)
-        return processed_df, preprocessor
-    
-    except Exception as e:
-        st.error(f"Error preprocessing data: {e}")
-        return tasks_df, None
-
-def train_priority_model(processed_df):
-    """Train priority prediction model"""
-    if processed_df.empty:
-        return None
-    
-    try:
-        model = TaskPriorityModel()
-        metrics = model.train(processed_df)
-        return model, metrics
-    
-    except Exception as e:
-        st.error(f"Error training model: {e}")
-        return None, {}
-
-def main():
-    """Main dashboard function"""
-    
-    # Header
-    st.markdown('<h1 class="main-header">🤖 AI Task Management System</h1>', unsafe_allow_html=True)
-    
-    # Initialize database
-    if not initialize_database():
-        st.stop()
-    
-    # Sidebar
-    st.sidebar.title("Navigation")
-    page = st.sidebar.selectbox(
-        "Choose a page",
-        ["Dashboard", "Tasks", "Team Management", "AI Models", "Analytics"]
-    )
-    
-    # Load data
-    with st.spinner("Loading data..."):
-        tasks_df, employee_profiles = load_data()
-    
-    if page == "Dashboard":
-        show_dashboard(tasks_df, employee_profiles)
-    elif page == "Tasks":
-        show_tasks_page(tasks_df, employee_profiles)
-    elif page == "Team Management":
-        show_team_page(employee_profiles)
-    elif page == "AI Models":
-        show_ai_models_page(tasks_df)
-    elif page == "Analytics":
-        show_analytics_page(tasks_df, employee_profiles)
-
-def show_dashboard(tasks_df, employee_profiles):
-    """Show main dashboard"""
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        total_tasks = len(tasks_df)
-        st.metric("Total Tasks", total_tasks)
-    
-    with col2:
-        pending_tasks = len(tasks_df[tasks_df['status'] == 'pending']) if not tasks_df.empty else 0
-        st.metric("Pending Tasks", pending_tasks)
-    
-    with col3:
-        total_employees = len(employee_profiles)
-        st.metric("Team Members", total_employees)
-    
-    with col4:
-        if not tasks_df.empty and 'estimated_hours' in tasks_df.columns:
-            avg_hours = tasks_df['estimated_hours'].mean()
-            st.metric("Avg. Task Hours", f"{avg_hours:.1f}")
-        else:
-            st.metric("Avg. Task Hours", "N/A")
-    
-    # Charts
-    if not tasks_df.empty:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Tasks by Status")
-            status_counts = tasks_df['status'].value_counts()
-            fig = px.pie(
-                values=status_counts.values,
-                names=status_counts.index,
-                title="Task Distribution by Status"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Tasks by Category")
-            if 'category' in tasks_df.columns:
-                category_counts = tasks_df['category'].value_counts()
-                fig = px.bar(
-                    x=category_counts.index,
-                    y=category_counts.values,
-                    title="Tasks by Category"
-                )
-                fig.update_layout(
-                    xaxis_title="Category",
-                    yaxis_title="Number of Tasks"
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    # Recent tasks
-    st.subheader("Recent Tasks")
-    if not tasks_df.empty:
-        recent_tasks = tasks_df.head(5)[['title', 'category', 'status', 'deadline']]
-        st.dataframe(recent_tasks, use_container_width=True)
-    else:
-        st.info("No tasks found. Add some tasks to get started!")
-
-def show_tasks_page(tasks_df, employee_profiles):
-    """Show tasks management page"""
-    
-    st.header("Task Management")
-    
-    # Task creation form
-    with st.expander("Add New Task", expanded=False):
-        with st.form("new_task_form"):
-            title = st.text_input("Task Title")
-            description = st.text_area("Description")
-            category = st.selectbox(
-                "Category",
-                ["bug", "feature", "maintenance", "security", "design", "documentation"]
-            )
-            estimated_hours = st.number_input("Estimated Hours", min_value=0.5, value=8.0, step=0.5)
-            deadline = st.date_input("Deadline", value=datetime.now() + timedelta(days=7))
-            
-            submitted = st.form_submit_button("Add Task")
-            
-            if submitted and title:
-                try:
-                    conn = connect_db()
-                    conn.execute("""
-                        INSERT INTO tasks (title, description, category, estimated_hours, deadline, status)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (title, description, category, estimated_hours, deadline.strftime('%Y-%m-%d'), 'pending'))
-                    conn.commit()
-                    conn.close()
-                    st.success("Task added successfully!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error adding task: {e}")
-    
-    # Task assignment
-    st.subheader("Intelligent Task Assignment")
-    
-    if not tasks_df.empty and employee_profiles:
-        pending_tasks = tasks_df[tasks_df['status'] == 'pending']
-        
-        if not pending_tasks.empty:
-            # Preprocess data for assignment
-            try:
-                processed_df, preprocessor = preprocess_data(tasks_df)
-                
-                # Initialize task assigner
-                assigner = IntelligentTaskAssigner(employee_profiles)
-                
-                # Select task to assign
-                task_options = {f"{row['title']} (ID: {row['id']})": row 
-                              for _, row in pending_tasks.iterrows()}
-                
-                selected_task_key = st.selectbox("Select task to assign:", list(task_options.keys()))
-                
-                if selected_task_key:
-                    selected_task = task_options[selected_task_key]
-                    
-                    # Get assignment recommendations
-                    recommendations = assigner.assign_task(selected_task.to_dict())
-                    
-                    if recommendations:
-                        st.write("**Assignment Recommendations:**")
-                        
-                        rec_df = pd.DataFrame(recommendations, columns=['Employee ID', 'Score'])
-                        rec_df['Score'] = rec_df['Score'].round(3)
-                        
-                        # Add employee names
-                        emp_names = {}
-                        for emp in employee_profiles:
-                            emp_names[emp['employee_id']] = emp.get('name', 'Unknown')
-                        
-                        rec_df['Employee Name'] = rec_df['Employee ID'].map(emp_names)
-                        rec_df = rec_df[['Employee ID', 'Employee Name', 'Score']]
-                        
-                        st.dataframe(rec_df, use_container_width=True)
-                        
-                        # Assign button
-                        if st.button("Assign to Top Candidate"):
-                            best_employee = recommendations[0][0]
-                            try:
-                                conn = connect_db()
-                                conn.execute(
-                                    "UPDATE tasks SET assigned_to = ?, status = 'assigned' WHERE id = ?",
-                                    (best_employee, selected_task['id'])
-                                )
-                                conn.commit()
-                                conn.close()
-                                st.success(f"Task assigned to {emp_names.get(best_employee, best_employee)}")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error assigning task: {e}")
-                
-            except Exception as e:
-                st.error(f"Error in task assignment: {e}")
-        else:
-            st.info("No pending tasks available for assignment.")
-    
-    # Tasks table
-    st.subheader("All Tasks")
-    if not tasks_df.empty:
-        # Add employee names to tasks
-        if 'assigned_to' in tasks_df.columns:
-            emp_names = {emp['employee_id']: emp.get('name', 'Unknown') for emp in employee_profiles}
-            tasks_display = tasks_df.copy()
-            tasks_display['assigned_to_name'] = tasks_display['assigned_to'].map(emp_names).fillna('Unassigned')
-        else:
-            tasks_display = tasks_df.copy()
-            tasks_display['assigned_to_name'] = 'Unassigned'
-        
-        # Display tasks
-        display_columns = ['title', 'category', 'status', 'assigned_to_name', 'deadline', 'estimated_hours']
-        available_columns = [col for col in display_columns if col in tasks_display.columns]
-        
-        st.dataframe(
-            tasks_display[available_columns],
-            use_container_width=True
-        )
-
-def show_team_page(employee_profiles):
-    """Show team management page"""
-    
-    st.header("Team Management")
-    
-    if not employee_profiles:
-        st.warning("No employee profiles found. Please check the employee_profiles.json file.")
-        return
-    
-    # Team overview
-    st.subheader("Team Overview")
-    
-    # Create team summary
-    team_data = []
-    for emp in employee_profiles:
-        team_data.append({
-            'ID': emp.get('employee_id', ''),
-            'Name': emp.get('name', 'Unknown'),
-            'Department': emp.get('department', 'Unknown'),
-            'Role': emp.get('role', 'Unknown'),
-            'Experience (Years)': emp.get('experience_years', 0),
-            'Current Workload': emp.get('current_workload', 0),
-            'Max Capacity': emp.get('max_capacity', 10),
-            'Utilization %': round((emp.get('current_workload', 0) / emp.get('max_capacity', 10)) * 100, 1)
-        })
-    
-    team_df = pd.DataFrame(team_data)
-    st.dataframe(team_df, use_container_width=True)
-    
-    # Workload visualization
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Workload Distribution")
-        fig = px.bar(
-            team_df,
-            x='Name',
-            y=['Current Workload', 'Max Capacity'],
-            barmode='group',
-            title="Current Workload vs Capacity"
-        )
-        fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.subheader("Team Utilization")
-        fig = px.bar(
-            team_df,
-            x='Name',
-            y='Utilization %',
-            title="Team Member Utilization",
-            color='Utilization %',
-            color_continuous_scale='RdYlGn_r'
-        )
-        fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # Employee details
-    st.subheader("Employee Details")
-    selected_emp = st.selectbox(
-        "Select employee:",
-        options=[emp['name'] for emp in employee_profiles]
-    )
-    
-    if selected_emp:
-        emp_data = next(emp for emp in employee_profiles if emp['name'] == selected_emp)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write(f"**Name:** {emp_data.get('name', 'Unknown')}")
-            st.write(f"**Department:** {emp_data.get('department', 'Unknown')}")
-            st.write(f"**Role:** {emp_data.get('role', 'Unknown')}")
-            st.write(f"**Experience:** {emp_data.get('experience_years', 0)} years")
-        
-        with col2:
-            st.write(f"**Skills:** {', '.join(emp_data.get('skills', []))}")
-            st.write(f"**Expertise:** {', '.join(emp_data.get('expertise_areas', []))}")
-            st.write(f"**Preferred Tasks:** {', '.join(emp_data.get('preferred_task_types', []))}")
-        
-        # Availability chart
-        availability = emp_data.get('availability', {})
-        if availability:
-            st.subheader("Weekly Availability")
-            days = list(availability.keys())
-            hours = list(availability.values())
-            
-            fig = px.bar(x=days, y=hours, title="Daily Availability (Hours)")
-            st.plotly_chart(fig, use_container_width=True)
-
-def show_ai_models_page(tasks_df):
-    """Show AI models page"""
-    
-    st.header("AI Models")
-    
-    if tasks_df.empty:
-        st.warning("No task data available for model training.")
-        return
-    
-    # Model training section
-    st.subheader("Priority Prediction Model")
-    
-    if st.button("Train Priority Model"):
-        with st.spinner("Training model..."):
-            try:
-                # Preprocess data
-                processed_df, preprocessor = preprocess_data(tasks_df)
-                
-                # Train model
-                model, metrics = train_priority_model(processed_df)
-                
-                if model and metrics:
-                    st.success("Model trained successfully!")
-                    
-                    # Display metrics
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.metric("R² Score", f"{metrics.get('r2', 0):.3f}")
-                    with col2:
-                        st.metric("RMSE", f"{metrics.get('rmse', 0):.3f}")
-                    with col3:
-                        st.metric("MAE", f"{metrics.get('mae', 0):.3f}")
-                    
-                    # Feature importance
-                    importance = model.get_feature_importance()
-                    if importance:
-                        st.subheader("Feature Importance")
-                        
-                        features = list(importance.keys())[:10]  # Top 10
-                        importances = list(importance.values())[:10]
-                        
-                        fig = px.bar(
-                            x=importances,
-                            y=features,
-                            orientation='h',
-                            title="Top 10 Most Important Features"
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Save model
-                    model.save_model()
-                    st.info("Model saved to models/priority_model.pkl")
-                
-            except Exception as e:
-                st.error(f"Error training model: {e}")
-    
-    # Model testing section
-    st.subheader("Test Priority Prediction")
-    
-    with st.form("prediction_form"):
-        task_desc = st.text_area("Task Description")
-        task_category = st.selectbox("Category", ["bug", "feature", "maintenance", "security", "design"])
-        complexity = st.slider("Complexity (1-10)", 1, 10, 5)
-        estimated_hours = st.number_input("Estimated Hours", min_value=0.5, value=8.0)
-        days_to_deadline = st.number_input("Days until deadline", min_value=1, value=7)
-        
-        predict_btn = st.form_submit_button("Predict Priority")
-        
-        if predict_btn and task_desc:
-            try:
-                # Create sample task for prediction
-                test_task = pd.DataFrame([{
-                    'description': task_desc,
-                    'category': task_category,
-                    'complexity_score': complexity,
-                    'estimated_hours': estimated_hours,
-                    'days_until_deadline': days_to_deadline,
-                    'status': 'pending'
-                }])
-                
-                # Load model and predict
-                model = TaskPriorityModel()
-                model.load_model()
-                
-                # Preprocess test data
-                preprocessor = TaskDataPreprocessor()
-                processed_test = preprocessor.fit_transform(test_task)
-                
-                prediction = model.predict(processed_test)[0]
-                
-                st.success(f"Predicted Priority Score: {prediction:.2f}/10")
-                
-                # Priority interpretation
-                if prediction >= 8:
-                    priority_level = "🔴 Critical"
-                elif prediction >= 6:
-                    priority_level = "🟡 High"
-                elif prediction >= 4:
-                    priority_level = "🟢 Medium"
-                else:
-                    priority_level = "⚪ Low"
-                
-                st.write(f"Priority Level: {priority_level}")
-                
-            except Exception as e:
-                st.error(f"Error making prediction: {e}")
-
-def show_analytics_page(tasks_df, employee_profiles):
-    """Show analytics and insights page"""
-    
-    st.header("Analytics & Insights")
-    
-    if tasks_df.empty:
-        st.warning("No task data available for analytics.")
-        return
-    
-    # Time-based analysis
-    if 'created_at' in tasks_df.columns:
-        st.subheader("Task Creation Trends")
-        
-        # Convert created_at to datetime
-        tasks_df['created_at'] = pd.to_datetime(tasks_df['created_at'])
-        tasks_df['date'] = tasks_df['created_at'].dt.date
-        
-        daily_tasks = tasks_df.groupby('date').size().reset_index(name='count')
-        
-        fig = px.line(
-            daily_tasks,
-            x='date',
-            y='count',
-            title="Daily Task Creation"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # Task completion analysis
-    if 'status' in tasks_df.columns:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Task Status Distribution")
-            status_counts = tasks_df['status'].value_counts()
-            
-            fig = px.pie(
-                values=status_counts.values,
-                names=status_counts.index,
-                title="Task Status Distribution"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Category Performance")
-            if 'category' in tasks_df.columns:
-                category_status = pd.crosstab(tasks_df['category'], tasks_df['status'])
-                
-                fig = px.bar(
-                    category_status.reset_index(),
-                    x='category',
-                    y=category_status.columns,
-                    title="Task Status by Category"
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    # Team performance
-    if employee_profiles:
-        st.subheader("Team Performance")
-        
-        # Calculate team metrics
-        total_capacity = sum(emp.get('max_capacity', 10) for emp in employee_profiles)
-        total_workload = sum(emp.get('current_workload', 0) for emp in employee_profiles)
-        avg_utilization = (total_workload / total_capacity * 100) if total_capacity > 0 else 0
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Team Capacity", f"{total_capacity} hours")
-        with col2:
-            st.metric("Current Workload", f"{total_workload} hours")
-        with col3:
-            st.metric("Average Utilization", f"{avg_utilization:.1f}%")
-        
-        # Department analysis
-        dept_data = {}
-        for emp in employee_profiles:
-            dept = emp.get('department', 'Unknown')
-            if dept not in dept_data:
-                dept_data[dept] = {'count': 0, 'total_capacity': 0, 'total_workload': 0}
-            
-            dept_data[dept]['count'] += 1
-            dept_data[dept]['total_capacity'] += emp.get('max_capacity', 10)
-            dept_data[dept]['total_workload'] += emp.get('current_workload', 0)
-        
-        dept_df = pd.DataFrame([
-            {
-                'Department': dept,
-                'Employees': data['count'],
-                'Capacity': data['total_capacity'],
-                'Workload': data['total_workload'],
-                'Utilization %': (data['total_workload'] / data['total_capacity'] * 100) if data['total_capacity'] > 0 else 0
-            }
-            for dept, data in dept_data.items()
+        ),
+        html.Br(),
+        html.Div([
+            html.Div([
+                dcc.Graph(figure=fig_priority)
+            ], style={'width': '48%', 'display': 'inline-block'}),
+            html.Div([
+                dcc.Graph(figure=fig_category)
+            ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'})
         ])
-        
-        st.subheader("Department Overview")
-        st.dataframe(dept_df, use_container_width=True)
+    ]), file_display, status_msg, category_options
 
-if __name__ == "__main__":
-    main() 
+if __name__ == '__main__':
+    app.run(debug=True) 

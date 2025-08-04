@@ -249,7 +249,7 @@ class TaskDataPreprocessor:
         return df_processed
 
 
-def load_and_preprocess_task_data(file_path: str = None, db_path: str = "db/tasks.db") -> pd.DataFrame:
+def load_and_preprocess_task_data(file_path: str = None, db_path: str = "ai_task_management.db") -> pd.DataFrame:
     """Load and preprocess task data from database or file"""
     if file_path:
         # Load from CSV file

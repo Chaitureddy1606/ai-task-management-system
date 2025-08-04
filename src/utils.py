@@ -29,7 +29,7 @@ def load_employee_profiles(file_path: str = "data/employee_profiles.json") -> Li
         return []
 
 
-def connect_db(db_path: str = "db/tasks.db") -> sqlite3.Connection:
+def connect_db(db_path: str = "ai_task_management.db") -> sqlite3.Connection:
     """Create connection to SQLite database"""
     try:
         conn = sqlite3.connect(db_path)

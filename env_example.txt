@@ -1,0 +1,21 @@
+# Environment Variables for AI Task Management System
+# Copy this file to .env and add your actual API keys
+
+# Gemini API Configuration
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Database Configuration
+DATABASE_PATH=ai_task_management.db
+
+# App Configuration
+APP_TITLE=AI Task Management System
+APP_ICON=🤖
+
+# Feature Flags
+ENABLE_GEMINI=True
+ENABLE_ADVANCED_AI=True
+ENABLE_TEAM_CHAT=True
+ENABLE_GANTT_CHARTS=True
+
+# Security Configuration
+ENCRYPT_API_KEYS=False 
