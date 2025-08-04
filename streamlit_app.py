@@ -86,85 +86,9 @@ else:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Database initialization function for Streamlit Cloud
-def initialize_database_safe():
-    """Initialize database with proper error handling for Streamlit Cloud"""
-    try:
-        # Use a timeout and proper connection handling for Streamlit Cloud
-        conn = sqlite3.connect('ai_task_management.db', timeout=30.0)
-        conn.execute("PRAGMA journal_mode=WAL")  # Use WAL mode for better concurrency
-        conn.execute("PRAGMA synchronous=NORMAL")  # Faster writes
-        conn.execute("PRAGMA cache_size=10000")  # Increase cache size
-        conn.execute("PRAGMA busy_timeout=30000")  # 30 second timeout
-        cursor = conn.cursor()
-        
-        # Create basic tables
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                description TEXT,
-                category TEXT,
-                priority TEXT,
-                urgency_score INTEGER,
-                complexity_score INTEGER,
-                business_impact INTEGER,
-                estimated_hours REAL,
-                days_until_deadline INTEGER,
-                status TEXT DEFAULT 'pending',
-                assigned_to TEXT,
-                created_at TEXT,
-                updated_at TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS employees (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                role TEXT,
-                skills TEXT,
-                expertise_areas TEXT,
-                preferred_task_types TEXT,
-                current_workload INTEGER,
-                max_capacity INTEGER,
-                experience_years INTEGER,
-                location TEXT,
-                availability TEXT,
-                created_at TEXT,
-                updated_at TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                email TEXT,
-                role TEXT DEFAULT 'user',
-                department TEXT DEFAULT 'General',
-                is_active BOOLEAN DEFAULT 1,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                last_login TEXT
-            )
-        """)
-        
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        st.error(f"❌ Database initialization failed: {e}")
-        return False
-
-# Simple main function for Streamlit Cloud
+# Simple main function for Streamlit Cloud - NO DATABASE INITIALIZATION
 def main_simple():
-    """Simple main function for Streamlit Cloud deployment"""
-    
-    # Initialize database first
-    if not initialize_database_safe():
-        st.error("❌ Failed to initialize database. Please refresh the page.")
-        return
+    """Simple main function for Streamlit Cloud deployment - No database required"""
     
     # Initialize session state
     if 'is_authenticated' not in st.session_state:
@@ -257,6 +181,22 @@ def main_simple():
             'Assignee': ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']
         })
         st.dataframe(sample_tasks, use_container_width=True)
+        
+        # Additional features
+        st.markdown("### 🚀 Quick Actions")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("📝 Add New Task"):
+                st.success("✅ Task creation feature coming soon!")
+        
+        with col2:
+            if st.button("👥 Manage Employees"):
+                st.success("✅ Employee management feature coming soon!")
+        
+        with col3:
+            if st.button("📊 View Analytics"):
+                st.success("✅ Advanced analytics feature coming soon!")
 
 # Run the application
 if __name__ == "__main__":
