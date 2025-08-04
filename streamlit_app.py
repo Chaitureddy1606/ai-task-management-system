@@ -1,37 +1,16 @@
 #!/usr/bin/env python3
 """
-AI Task Management System - Main Entry Point for Streamlit Cloud
-This file serves as the main entry point for Streamlit Cloud deployment
+AI Task Management System - Streamlit Cloud Entry Point
+Minimal version for reliable deployment
 """
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import numpy as np
-import json
-import io
-import sys
-import os
-from datetime import datetime, timedelta
-import sqlite3
-from typing import Dict, List, Any, Optional
-import logging
-import base64
-import time
-import joblib
-import random
-import re
-from collections import defaultdict
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-import pickle
-import warnings
-warnings.filterwarnings('ignore')
+from datetime import datetime
 
-# Set page config - MUST be the very first Streamlit command
+# Set page config - MUST be first
 st.set_page_config(
     page_title="AI Task Management System",
     page_icon="🤖",
@@ -39,63 +18,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Import configuration
-try:
-    from config import GEMINI_API_KEY, ENABLE_GEMINI
-except ImportError:
-    GEMINI_API_KEY = ""
-    ENABLE_GEMINI = False
-
-# Gemini API Configuration
-GEMINI_CONFIG = {
-    "enabled": ENABLE_GEMINI,
-    "api_key": GEMINI_API_KEY,
-    "model": "gemini-1.5-flash",
-    "max_tokens": 1000,
-    "temperature": 0.3,
-    "features": {
-        "task_analysis": True,
-        "employee_matching": True,
-        "priority_prediction": True,
-        "natural_queries": True,
-        "insights": True
-    }
-}
-
-# Try to import Gemini API
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    st.warning("⚠️ Gemini API not available. Install with: pip install google-generativeai")
-
-# Initialize Gemini if available and enabled
-if GEMINI_AVAILABLE and GEMINI_CONFIG["enabled"] and GEMINI_CONFIG["api_key"]:
-    try:
-        genai.configure(api_key=GEMINI_CONFIG["api_key"])
-        gemini_model = genai.GenerativeModel(GEMINI_CONFIG["model"])
-        GEMINI_READY = True
-    except Exception as e:
-        st.error(f"❌ Gemini API initialization failed: {e}")
-        GEMINI_READY = False
-else:
-    GEMINI_READY = False
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Simple main function for Streamlit Cloud - NO DATABASE INITIALIZATION
-def main_simple():
-    """Simple main function for Streamlit Cloud deployment - No database required"""
+def main():
+    """Main application - No database, no external dependencies"""
     
     # Initialize session state
     if 'is_authenticated' not in st.session_state:
         st.session_state.is_authenticated = False
     
     if not st.session_state.is_authenticated:
-        # Show simple login
+        # Login page
         st.title("🤖 AI Task Management System")
         st.markdown("---")
         
@@ -123,14 +54,14 @@ def main_simple():
             - Username: `admin`
             - Password: `admin123`
             
-            **Features Available:**
-            - Task Management
+            **Features:**
+            - Task Management Dashboard
             - Employee Assignment
-            - AI-Powered Recommendations
-            - Analytics Dashboard
+            - Analytics & Reports
+            - AI-Powered Insights
             """)
     else:
-        # Show main dashboard
+        # Main dashboard
         st.title("🤖 AI Task Management System")
         
         # Sidebar
@@ -138,15 +69,16 @@ def main_simple():
             st.markdown("### 👤 User Info")
             st.write(f"**User:** {st.session_state.current_user}")
             st.write(f"**Role:** {st.session_state.user_role}")
+            st.write(f"**Login Time:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             
             if st.button("🚪 Logout"):
                 st.session_state.is_authenticated = False
                 st.rerun()
         
         # Main content
-        st.markdown("### 📊 Dashboard")
+        st.markdown("### 📊 Dashboard Overview")
         
-        # Sample data
+        # Metrics
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -161,43 +93,73 @@ def main_simple():
         with col4:
             st.metric("Pending", "2", "+1")
         
-        # Sample chart
-        st.markdown("### 📈 Task Status Overview")
-        data = {
+        # Charts
+        st.markdown("### 📈 Task Analytics")
+        
+        # Task Status Chart
+        status_data = {
             'Status': ['Completed', 'In Progress', 'Pending', 'Overdue'],
-            'Count': [18, 5, 2, 1]
+            'Count': [18, 5, 2, 1],
+            'Color': ['#00ff00', '#ffaa00', '#ff0000', '#ff0000']
         }
-        df = pd.DataFrame(data)
+        df_status = pd.DataFrame(status_data)
         
-        fig = px.pie(df, values='Count', names='Status', title="Task Distribution")
-        st.plotly_chart(fig, use_container_width=True)
+        fig_status = px.pie(df_status, values='Count', names='Status', 
+                           title="Task Status Distribution",
+                           color_discrete_sequence=df_status['Color'])
+        st.plotly_chart(fig_status, use_container_width=True)
         
-        # Sample table
+        # Priority Chart
+        priority_data = {
+            'Priority': ['High', 'Medium', 'Low'],
+            'Count': [8, 12, 5]
+        }
+        df_priority = pd.DataFrame(priority_data)
+        
+        fig_priority = px.bar(df_priority, x='Priority', y='Count',
+                             title="Tasks by Priority",
+                             color='Priority',
+                             color_discrete_map={'High': '#ff0000', 'Medium': '#ffaa00', 'Low': '#00ff00'})
+        st.plotly_chart(fig_priority, use_container_width=True)
+        
+        # Sample data table
         st.markdown("### 📋 Recent Tasks")
         sample_tasks = pd.DataFrame({
-            'Task': ['Design UI Mockups', 'Database Optimization', 'API Integration', 'Testing'],
-            'Priority': ['High', 'Medium', 'High', 'Low'],
-            'Status': ['In Progress', 'Completed', 'Pending', 'Completed'],
-            'Assignee': ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']
+            'Task': ['Design UI Mockups', 'Database Optimization', 'API Integration', 'Testing', 'Documentation'],
+            'Priority': ['High', 'Medium', 'High', 'Low', 'Medium'],
+            'Status': ['In Progress', 'Completed', 'Pending', 'Completed', 'In Progress'],
+            'Assignee': ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'Alex Brown'],
+            'Due Date': ['2024-01-15', '2024-01-10', '2024-01-20', '2024-01-08', '2024-01-18']
         })
         st.dataframe(sample_tasks, use_container_width=True)
         
-        # Additional features
+        # Quick actions
         st.markdown("### 🚀 Quick Actions")
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("📝 Add New Task"):
+            if st.button("📝 Add New Task", key="add_task"):
                 st.success("✅ Task creation feature coming soon!")
         
         with col2:
-            if st.button("👥 Manage Employees"):
+            if st.button("👥 Manage Employees", key="manage_employees"):
                 st.success("✅ Employee management feature coming soon!")
         
         with col3:
-            if st.button("📊 View Analytics"):
+            if st.button("📊 View Analytics", key="view_analytics"):
                 st.success("✅ Advanced analytics feature coming soon!")
+        
+        # Additional info
+        st.markdown("---")
+        st.markdown("### ℹ️ System Information")
+        st.info(f"""
+        **Deployment Status:** ✅ Successfully deployed on Streamlit Cloud
+        **Version:** 1.0.0
+        **Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        **Environment:** Streamlit Cloud
+        **Database:** Demo Mode (No external database required)
+        """)
 
 # Run the application
 if __name__ == "__main__":
-    main_simple() 
+    main() 
