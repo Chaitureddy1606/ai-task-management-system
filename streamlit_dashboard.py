@@ -474,7 +474,12 @@ def create_user_specific_tables(username):
         conn.close()
         return True
     except Exception as e:
-        print(f"Error creating user tables: {e}")
+        st.error(f"Error creating user tables: {e}")
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
         return False
 
 def register_user(username, password, email, full_name, department="General"):
@@ -703,7 +708,12 @@ def show_logout():
 def initialize_database():
     """Initialize database and create tables if they don't exist"""
     try:
-        conn = sqlite3.connect('ai_task_management.db')
+        # Use a timeout and proper connection handling for Streamlit Cloud
+        conn = sqlite3.connect('ai_task_management.db', timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL")  # Use WAL mode for better concurrency
+        conn.execute("PRAGMA synchronous=NORMAL")  # Faster writes
+        conn.execute("PRAGMA cache_size=10000")  # Increase cache size
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second timeout
         cursor = conn.cursor()
         
         # Create tasks table
@@ -8539,8 +8549,13 @@ def main():
     if 'search_filters' not in st.session_state:
         st.session_state.search_filters = {}
     
-    # Initialize database
-    initialize_database()
+    # Initialize database with error handling
+    try:
+        initialize_database()
+    except Exception as e:
+        st.error(f"❌ Database initialization failed: {e}")
+        st.info("🔄 Please refresh the page to try again")
+        return
     
     # Check authentication
     if not st.session_state.is_authenticated:
