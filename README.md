@@ -1,354 +1,249 @@
 # AI Task Management System 🤖
 
-An intelligent task management system that uses machine learning to automatically prioritize tasks, assign them to team members, and provide insights for better project management.
+A comprehensive AI-powered task management system with intelligent employee assignment, real-time analytics, and advanced features.
 
-## 📋 Features
+## 🚀 Live Demo
 
-- **Intelligent Task Prioritization**: ML models automatically score task priority based on urgency, complexity, deadlines, and business impact
-- **Smart Task Assignment**: Assigns tasks to team members based on skills, workload, availability, and preferences
-- **Automatic Task Classification**: Categorizes tasks into types (bug, feature, maintenance, etc.) using NLP
-- **Advanced Analytics**: Comprehensive dashboard with insights on team performance, workload distribution, and task trends
-- **Feature Engineering**: Extracts 50+ features from task descriptions for better ML predictions
+**Streamlit Cloud Deployment:** [Your Streamlit App URL]
+**GitHub Repository:** https://github.com/Chaitureddy1606/ai-task-management-system
 
-## 🏗️ Architecture
+## ✨ Features
 
-```
-ai-task-manager/
-│
-├── data/                          # Data storage
-│   ├── raw/                       # Raw data files
-│   ├── processed/                 # Processed datasets
-│   └── employee_profiles.json     # Team member profiles
-│
-├── src/                           # Source code
-│   ├── preprocessing.py           # Data preprocessing pipeline
-│   ├── feature_engineering.py     # Advanced feature extraction
-│   ├── classifier.py             # Task classification models
-│   ├── priority_model.py         # Priority scoring models
-│   ├── task_assigner.py          # Intelligent task assignment
-│   └── utils.py                  # Utility functions
-│
-├── dashboard/                     # Streamlit web application
-│   └── app.py                    # Interactive dashboard
-│
-├── models/                       # Trained ML models
-│   ├── classifier.pkl           # Task classifier
-│   └── priority_model.pkl       # Priority prediction model
-│
-├── db/                          # Database files
-│   └── tasks.db                 # SQLite database
-│
-├── notebooks/                   # Jupyter notebooks
-│   └── eda_pipeline.ipynb       # Exploratory data analysis
-│
-├── requirements.txt             # Python dependencies
-├── README.md                   # This file
-└── final_report.md            # Project documentation
-```
+### 🎯 Core Features
+- **Auto Task Assignment** - Upload any CSV format and auto-assign to employees
+- **User Authentication** - Sign up, login, role management
+- **Real-time Notifications** - Live updates and pending task alerts
+- **Mobile Responsive Design** - Works on all devices
+- **Task Status Management** - Track progress, urgency, complexity
+- **Comments System** - Team collaboration on tasks
+- **Dependencies Management** - Task prerequisites and relationships
 
-## 🚀 Quick Start
+### 🤖 Advanced AI Features
+- **Google Gemini AI Integration** - Smart task analysis and recommendations
+- **Natural Language Queries** - Ask questions in plain English
+- **Predictive Analytics** - AI-driven insights and forecasting
+- **Smart Prioritization** - AI-powered task prioritization
 
-### 1. Clone and Setup
+### 📊 Analytics & Reporting
+- **Advanced Analytics** - KPIs, productivity metrics, custom reports
+- **Team Chat System** - Built-in communication
+- **Gantt Charts** - Visual project timelines
+- **Export Functionality** - Download reports and data
 
+### 👥 Employee Management
+- **CSV/JSON Upload** - Bulk employee import with auto-column detection
+- **AI Employee Assignment** - Smart matching based on skills and workload
+- **Employee Analytics** - Performance tracking and insights
+
+## 🛠️ Installation
+
+### Local Development
+
+1. **Clone the repository:**
 ```bash
-git clone <repository-url>
+git clone https://github.com/Chaitureddy1606/ai-task-management-system.git
 cd ai-task-management-system
+```
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+2. **Install dependencies:**
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Initialize Database
-
-```python
-from src.utils import connect_db, create_tasks_table
-
-# Create database and tables
-conn = connect_db()
-create_tasks_table(conn)
-conn.close()
-```
-
-### 3. Run the Dashboard
-
+3. **Set up configuration:**
 ```bash
-streamlit run dashboard/app.py
+# Copy config template
+cp config_template.py config.py
+# Edit config.py with your API keys
 ```
 
-Navigate to `http://localhost:8501` to access the web interface.
-
-## 💡 Core Components
-
-### 1. Task Preprocessing (`src/preprocessing.py`)
-
-- Text cleaning and normalization
-- Feature extraction from task descriptions
-- Complexity scoring based on content
-- Urgency detection from keywords
-- Deadline processing and temporal features
-
-### 2. Priority Model (`src/priority_model.py`)
-
-```python
-from src.priority_model import TaskPriorityModel
-
-# Initialize and train model
-model = TaskPriorityModel(model_type='random_forest')
-metrics = model.train(tasks_df)
-
-# Predict priority for new tasks
-priorities = model.predict(new_tasks_df)
+4. **Run the application:**
+```bash
+streamlit run streamlit_dashboard.py --server.port 8518
 ```
 
-**Supported Models:**
-- Random Forest Regressor
-- Gradient Boosting Regressor  
-- Linear Regression
+### Streamlit Cloud Deployment
 
-### 3. Task Classification (`src/classifier.py`)
+1. **Fork this repository** to your GitHub account
+2. **Connect to Streamlit Cloud:**
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Sign in with GitHub
+   - Click "New app"
+   - Select your forked repository
+   - Set the path to: `streamlit_app.py`
+   - Click "Deploy"
 
-```python
-from src.classifier import TaskClassifier
+3. **Configure environment variables** in Streamlit Cloud:
+   - Go to your app settings
+   - Add your Gemini API key as an environment variable
 
-# Train classifier
-classifier = TaskClassifier(model_type='naive_bayes')
-metrics = classifier.train(tasks_df)
+## 📁 Project Structure
 
-# Classify new tasks
-result = classifier.classify_task(
-    title="Fix login bug",
-    description="Users can't log in with special characters"
-)
 ```
-
-**Categories:**
-- Bug fixes
-- Feature development
-- Security tasks
-- Maintenance
-- Design work
-- Documentation
-
-### 4. Intelligent Assignment (`src/task_assigner.py`)
-
-```python
-from src.task_assigner import IntelligentTaskAssigner
-
-# Initialize with team profiles
-assigner = IntelligentTaskAssigner(employee_profiles)
-
-# Get assignment recommendations
-recommendations = assigner.assign_task(task_dict)
-
-# Assign multiple tasks with workload balancing
-assignments = assigner.assign_multiple_tasks(tasks_list, balance_workload=True)
+ai-task-management-system/
+├── streamlit_dashboard.py      # Main application
+├── streamlit_app.py           # Streamlit Cloud entry point
+├── config.py                  # Configuration settings
+├── requirements.txt           # Python dependencies
+├── .streamlit/config.toml    # Streamlit configuration
+├── deploy_automation.sh      # Auto deployment script
+├── sample_employees.csv      # Sample employee data
+├── sample_employees.json     # Sample employee data
+└── README.md                # This file
 ```
-
-**Assignment Factors:**
-- Skill matching (35%)
-- Current workload (25%)
-- Task preferences (15%)
-- Experience level (15%)
-- Time availability (10%)
-
-### 5. Feature Engineering (`src/feature_engineering.py`)
-
-Extracts 50+ features including:
-- **Temporal**: Creation time, deadlines, urgency multipliers
-- **Text Complexity**: Length, word count, technical indicators
-- **Technical Keywords**: Programming, security, infrastructure terms
-- **Effort Estimation**: Complexity indicators from text
-- **Stakeholder Impact**: Customer-facing vs internal tasks
-- **Dependencies**: Task sequence and blocking indicators
-
-## 📊 Dashboard Features
-
-### Main Dashboard
-- Task overview and metrics
-- Team workload visualization
-- Recent tasks and assignments
-
-### Task Management
-- Add new tasks with smart categorization
-- Intelligent assignment recommendations
-- Bulk task operations
-
-### Team Management
-- Employee profiles and skills
-- Workload distribution charts
-- Availability tracking
-
-### AI Models
-- Model training interface
-- Performance metrics
-- Feature importance analysis
-
-### Analytics
-- Task completion trends
-- Team performance insights
-- Category-wise analysis
 
 ## 🔧 Configuration
 
-### Employee Profiles (`data/employee_profiles.json`)
+### Environment Variables
 
-```json
-{
-  "employee_id": "EMP001",
-  "name": "Alice Johnson",
-  "department": "Engineering",
-  "role": "Senior Developer",
-  "skills": ["Python", "Machine Learning", "API Development"],
-  "experience_years": 5,
-  "current_workload": 7,
-  "max_capacity": 10,
-  "expertise_areas": ["Backend Development", "Data Engineering"],
-  "preferred_task_types": ["Development", "Code Review"],
-  "availability": {
-    "monday": 8,
-    "tuesday": 8,
-    "wednesday": 6,
-    "thursday": 8,
-    "friday": 4
-  }
-}
-```
-
-### Model Configuration
-
-Priority model weights can be customized:
+Create a `config.py` file with your settings:
 
 ```python
-custom_weights = {
-    'skill_match': 0.4,
-    'workload': 0.3,
-    'preference': 0.1,
-    'experience': 0.1,
-    'availability': 0.1
-}
+# Gemini API Configuration
+GEMINI_API_KEY = "your_gemini_api_key_here"
 
-assignments = assigner.assign_task(task, weights=custom_weights)
+# App Configuration
+APP_TITLE = "AI Task Management System"
+APP_ICON = "🤖"
+
+# Feature Flags
+ENABLE_GEMINI = True
+ENABLE_ADVANCED_AI = True
+ENABLE_TEAM_CHAT = True
+ENABLE_GANTT_CHARTS = True
 ```
 
-## 📈 Model Performance
+### Streamlit Cloud Environment Variables
 
-### Priority Model Metrics
-- **R² Score**: 0.85+ on test data
-- **RMSE**: < 1.0 priority points
-- **Cross-validation**: 5-fold CV with 0.82 average R²
+Add these in your Streamlit Cloud app settings:
+- `GEMINI_API_KEY`: Your Google Gemini API key
 
-### Classification Accuracy
-- **Overall Accuracy**: 90%+ across categories
-- **Precision/Recall**: 0.85+ for all major categories
-- **F1-Score**: 0.87 average across categories
+## 🚀 Auto Deployment
 
-## 🔍 Example Usage
+### Automatic Git & Streamlit Updates
 
-### 1. Complete ML Pipeline
-
-```python
-# Load and preprocess data
-tasks_df, employee_profiles = load_data()
-processed_df, preprocessor = preprocess_data(tasks_df)
-
-# Train models
-priority_model = TaskPriorityModel()
-priority_metrics = priority_model.train(processed_df)
-
-classifier = TaskClassifier()
-class_metrics = classifier.train(processed_df)
-
-# Initialize task assigner
-assigner = IntelligentTaskAssigner(employee_profiles)
-
-# Process new task
-new_task = {
-    'title': 'Implement OAuth integration',
-    'description': 'Add OAuth 2.0 authentication for third-party login',
-    'estimated_hours': 12,
-    'deadline': '2024-02-15'
-}
-
-# Get predictions
-priority = priority_model.predict([new_task])[0]
-category = classifier.classify_task(new_task['title'], new_task['description'])
-assignment = assigner.assign_task(new_task)
-
-print(f"Priority: {priority:.2f}/10")
-print(f"Category: {category['predicted_category']}")
-print(f"Best assignee: {assignment[0][0]}")
-```
-
-### 2. Batch Processing
-
-```python
-# Process multiple tasks
-tasks_with_features = feature_engineer.engineer_all_features(raw_tasks)
-priorities = priority_model.predict(tasks_with_features)
-categories = classifier.bulk_classify_tasks(tasks_with_features)
-assignments = assigner.assign_multiple_tasks(tasks_list)
-```
-
-## 🧪 Testing
+The project includes an automation script that automatically commits changes and triggers Streamlit Cloud deployment:
 
 ```bash
-# Run tests
-python -m pytest tests/
-
-# Test individual components
-python -c "from src.priority_model import create_sample_priority_data; print('✓ Sample data created')"
-python -c "from src.utils import load_employee_profiles; print('✓ Profiles loaded')"
+# Run the auto deployment script
+./deploy_automation.sh
 ```
 
-## 📝 API Reference
+This script will:
+1. ✅ Check for changes in your local files
+2. ✅ Add all changes to Git
+3. ✅ Create a commit with timestamp
+4. ✅ Push to your GitHub repository
+5. ✅ Trigger automatic Streamlit Cloud deployment
 
-### Core Classes
+### Manual Deployment
 
-- `TaskDataPreprocessor`: Data cleaning and preprocessing
-- `TaskPriorityModel`: Priority prediction with multiple algorithms
-- `TaskClassifier`: Automatic task categorization
-- `IntelligentTaskAssigner`: Smart task assignment
-- `TaskFeatureEngineer`: Advanced feature extraction
+If you prefer manual deployment:
 
-### Utility Functions
+```bash
+# Commit and push changes
+git add .
+git commit -m "Update: [describe your changes]"
+git push origin main
 
-- `load_employee_profiles()`: Load team data
-- `connect_db()`: Database connection
-- `create_tasks_table()`: Initialize database schema
+# Streamlit Cloud will automatically deploy from your GitHub repository
+```
+
+## 📊 Usage
+
+### 1. **Employee Management**
+- Navigate to "Employee Management" in the sidebar
+- Use "Upload Employees" tab to import CSV/JSON files
+- System automatically detects and maps columns
+- Save employees to database for AI assignment
+
+### 2. **Task Upload & Assignment**
+- Go to "Upload Tasks" page
+- Upload CSV files with task data
+- System automatically assigns tasks to employees
+- View assignments in "Task Analysis"
+
+### 3. **AI Features**
+- Use "Advanced AI" tab for predictive analytics
+- Try natural language queries in "Natural Language" tab
+- Explore AI insights and recommendations
+
+### 4. **Analytics & Reporting**
+- View comprehensive analytics in "Advanced Analytics"
+- Export reports and data
+- Monitor team performance and productivity
+
+## 🔑 API Keys Setup
+
+### Google Gemini API
+
+1. **Get API Key:**
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the key
+
+2. **Configure:**
+   - Add to `config.py` for local development
+   - Add as environment variable in Streamlit Cloud
+
+## 📝 File Formats
+
+### Employee Upload (CSV/JSON)
+Supported columns:
+- **Name:** name, employee_name, full_name, first_name, last_name
+- **Role:** role, position, job_title, title, designation
+- **Department:** department, dept, team, division, unit
+- **Location:** location, city, office, site, branch
+- **Email:** email, email_address, e-mail, contact_email
+- **Phone:** phone, phone_number, mobile, contact, telephone
+- **Experience:** experience_years, experience, years_experience
+- **Skills:** skills, skill_set, competencies, expertise
+- **Workload:** current_workload, workload, current_load
+- **Capacity:** max_capacity, capacity, max_workload
+- **Salary:** salary, compensation, pay, wage, income
+- **Hire Date:** hire_date, start_date, joining_date
+- **Manager:** manager, supervisor, reporting_to, boss
+
+### Task Upload (CSV)
+Supported columns:
+- **Title:** title, task_title, name, task_name
+- **Description:** description, desc, details, task_description
+- **Category:** category, type, task_category, task_type
+- **Priority:** priority, task_priority, importance
+- **Urgency:** urgency, urgency_score, criticality
+- **Complexity:** complexity, complexity_score, difficulty
+- **Business Impact:** business_impact, impact, value
+- **Estimated Hours:** estimated_hours, hours, time_estimate
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-feature`)
-3. Commit changes (`git commit -am 'Add new feature'`)
-4. Push to branch (`git push origin feature/new-feature`)
-5. Create Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🔮 Future Enhancements
+## 🆘 Support
 
-- [ ] Integration with project management tools (Jira, Asana)
-- [ ] Real-time notifications and alerts
-- [ ] Advanced NLP with transformer models
-- [ ] Time series forecasting for delivery predictions
-- [ ] Mobile application interface
-- [ ] API endpoints for external integrations
-- [ ] Advanced reporting and export features
+If you encounter any issues:
 
-## 📞 Support
+1. **Check the logs** in Streamlit Cloud
+2. **Verify configuration** in `config.py`
+3. **Test locally** before deploying
+4. **Create an issue** on GitHub
 
-For questions or issues:
-- Create an issue in the repository
-- Check the documentation in `notebooks/eda_pipeline.ipynb`
-- Review the `final_report.md` for detailed analysis
+## 🎯 Roadmap
+
+- [ ] Advanced machine learning models
+- [ ] Integration with external project management tools
+- [ ] Mobile app development
+- [ ] Advanced reporting features
+- [ ] Multi-language support
 
 ---
 
-**Built with ❤️ using Python, Scikit-learn, Streamlit, and modern ML practices** 
+**Made with ❤️ using Streamlit and AI** 

@@ -5685,6 +5685,228 @@ def show_task_analysis():
                 else:
                     st.warning("⚠️ Please enter a query.")
 
+def process_employee_upload(uploaded_file):
+    """Process uploaded employee file (CSV or JSON)"""
+    try:
+        file_extension = uploaded_file.name.split('.')[-1].lower()
+        
+        if file_extension == 'csv':
+            # Read CSV file
+            df = pd.read_csv(uploaded_file)
+            
+            # Auto-detect and map columns
+            column_mapping = auto_detect_employee_columns(df)
+            
+            # Convert DataFrame to employee format
+            employees = convert_df_to_employees(df, column_mapping)
+            
+        elif file_extension == 'json':
+            # Read JSON file
+            employees = json.load(uploaded_file)
+            
+            # Validate JSON structure
+            if not isinstance(employees, list):
+                raise ValueError("JSON file should contain a list of employees")
+            
+            # Validate each employee
+            for employee in employees:
+                validate_employee_data(employee)
+        else:
+            raise ValueError("Unsupported file format. Please upload CSV or JSON files only.")
+        
+        return employees, f"Successfully processed {len(employees)} employees"
+        
+    except Exception as e:
+        raise Exception(f"Error processing file: {str(e)}")
+
+def auto_detect_employee_columns(df):
+    """Auto-detect employee column mapping from DataFrame"""
+    column_mapping = {}
+    df_columns = [col.lower().strip() for col in df.columns]
+    
+    # Define possible column names for each field
+    field_mappings = {
+        'name': ['name', 'employee_name', 'full_name', 'first_name', 'last_name', 'employee', 'staff_name'],
+        'role': ['role', 'position', 'job_title', 'title', 'designation', 'job_role'],
+        'department': ['department', 'dept', 'team', 'division', 'unit'],
+        'location': ['location', 'city', 'office', 'site', 'branch'],
+        'email': ['email', 'email_address', 'e-mail', 'contact_email'],
+        'phone': ['phone', 'phone_number', 'mobile', 'contact', 'telephone'],
+        'experience_years': ['experience_years', 'experience', 'years_experience', 'exp_years', 'years', 'seniority'],
+        'skills': ['skills', 'skill_set', 'competencies', 'expertise', 'technologies'],
+        'current_workload': ['current_workload', 'workload', 'current_load', 'load', 'capacity_used'],
+        'max_capacity': ['max_capacity', 'capacity', 'max_workload', 'max_load'],
+        'salary': ['salary', 'compensation', 'pay', 'wage', 'income'],
+        'hire_date': ['hire_date', 'start_date', 'joining_date', 'employment_date', 'date_hired'],
+        'manager': ['manager', 'supervisor', 'reporting_to', 'boss', 'lead']
+    }
+    
+    # Map columns
+    for field, possible_names in field_mappings.items():
+        for col in df_columns:
+            if any(name in col for name in possible_names):
+                column_mapping[field] = col
+                break
+    
+    return column_mapping
+
+def convert_df_to_employees(df, column_mapping):
+    """Convert DataFrame to employee list with proper formatting"""
+    employees = []
+    
+    for _, row in df.iterrows():
+        employee = {}
+        
+        # Map each field
+        for field, col_name in column_mapping.items():
+            if col_name in df.columns:
+                value = row[col_name]
+                
+                # Handle special cases
+                if field == 'skills':
+                    # Convert skills to list
+                    if pd.isna(value):
+                        employee[field] = []
+                    elif isinstance(value, str):
+                        # Split by common delimiters
+                        skills = [skill.strip() for skill in value.replace(';', ',').replace('|', ',').split(',') if skill.strip()]
+                        employee[field] = skills
+                    else:
+                        employee[field] = []
+                elif field in ['experience_years', 'current_workload', 'max_capacity', 'salary']:
+                    # Convert to numeric
+                    try:
+                        employee[field] = float(value) if pd.notna(value) else 0.0
+                    except:
+                        employee[field] = 0.0
+                elif field == 'hire_date':
+                    # Convert to date string
+                    try:
+                        if pd.notna(value):
+                            if isinstance(value, str):
+                                employee[field] = value
+                            else:
+                                employee[field] = str(value)[:10]  # YYYY-MM-DD format
+                        else:
+                            employee[field] = None
+                    except:
+                        employee[field] = None
+                else:
+                    # String fields
+                    employee[field] = str(value) if pd.notna(value) else ""
+        
+        # Set default values for missing fields
+        defaults = {
+            'name': 'Unknown Employee',
+            'role': 'General',
+            'department': 'General',
+            'location': 'Remote',
+            'email': '',
+            'phone': '',
+            'experience_years': 0.0,
+            'skills': [],
+            'current_workload': 5.0,
+            'max_capacity': 10.0,
+            'salary': 0.0,
+            'hire_date': None,
+            'manager': ''
+        }
+        
+        for field, default_value in defaults.items():
+            if field not in employee:
+                employee[field] = default_value
+        
+        employees.append(employee)
+    
+    return employees
+
+def validate_employee_data(employee):
+    """Validate employee data structure"""
+    required_fields = ['name', 'role']
+    for field in required_fields:
+        if field not in employee:
+            raise ValueError(f"Missing required field: {field}")
+    
+    # Ensure skills is a list
+    if 'skills' in employee and not isinstance(employee['skills'], list):
+        if isinstance(employee['skills'], str):
+            employee['skills'] = [skill.strip() for skill in employee['skills'].split(',')]
+        else:
+            employee['skills'] = []
+    
+    # Ensure numeric fields are numbers
+    numeric_fields = ['experience_years', 'current_workload', 'max_capacity', 'salary']
+    for field in numeric_fields:
+        if field in employee:
+            try:
+                employee[field] = float(employee[field])
+            except:
+                employee[field] = 0.0
+
+def save_employees_to_database_with_upload(employees, username=None):
+    """Save uploaded employees to database with user-specific handling"""
+    def operation(conn):
+        cursor = conn.cursor()
+        
+        # Create employees table if not exists
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS employees (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                role TEXT,
+                department TEXT,
+                location TEXT,
+                email TEXT,
+                phone TEXT,
+                experience_years REAL DEFAULT 0,
+                skills TEXT,  -- JSON string
+                current_workload REAL DEFAULT 5.0,
+                max_capacity REAL DEFAULT 10.0,
+                salary REAL DEFAULT 0,
+                hire_date TEXT,
+                manager TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT,
+                is_active BOOLEAN DEFAULT 1
+            )
+        ''')
+        
+        # Clear existing data if requested
+        cursor.execute("DELETE FROM employees")
+        
+        # Insert new employees
+        for employee in employees:
+            skills_json = json.dumps(employee.get('skills', []))
+            
+            cursor.execute('''
+                INSERT INTO employees (
+                    name, role, department, location, email, phone,
+                    experience_years, skills, current_workload, max_capacity,
+                    salary, hire_date, manager, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                employee.get('name', ''),
+                employee.get('role', ''),
+                employee.get('department', ''),
+                employee.get('location', ''),
+                employee.get('email', ''),
+                employee.get('phone', ''),
+                employee.get('experience_years', 0.0),
+                skills_json,
+                employee.get('current_workload', 5.0),
+                employee.get('max_capacity', 10.0),
+                employee.get('salary', 0.0),
+                employee.get('hire_date'),
+                employee.get('manager', ''),
+                username or 'system'
+            ))
+        
+        conn.commit()
+        return len(employees)
+    
+    return safe_database_operation(operation)
+
 def show_employee_management():
     """Show enhanced employee management page"""
     st.header("👥 Employee Management")
@@ -5694,7 +5916,7 @@ def show_employee_management():
     employees = load_employee_data_from_json()
     
     # Create tabs for different features
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Employee Overview", "🤖 AI Assignment", "📈 Analytics", "⚙️ Settings"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Employee Overview", "📤 Upload Employees", "🤖 AI Assignment", "📈 Analytics", "⚙️ Settings"])
     
     with tab1:
         st.subheader("📊 Employee Overview")
@@ -5744,7 +5966,7 @@ def show_employee_management():
         else:
             st.info("No employee data available. Please check the JSON file.")
     
-    with tab2:
+    with tab3:
         st.subheader("🤖 AI Assignment")
         
         # Add drag and drop assignment interface
@@ -5826,7 +6048,169 @@ def show_employee_management():
         else:
             st.info("Please load employee data first in the Employee Overview tab.")
     
-    with tab3:
+    with tab2:
+        st.subheader("📤 Upload Employees")
+        
+        # File upload section
+        st.markdown("### 📁 Upload Employee Data")
+        st.info("Upload CSV or JSON files containing employee information. The system will automatically detect and map columns.")
+        
+        # File upload
+        uploaded_file = st.file_uploader(
+            "Choose a file",
+            type=['csv', 'json'],
+            help="Upload CSV or JSON file with employee data"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                # Process the uploaded file
+                employees, message = process_employee_upload(uploaded_file)
+                
+                st.success(f"✅ {message}")
+                
+                # Show preview
+                st.subheader("📋 Employee Data Preview")
+                df = pd.DataFrame(employees)
+                st.dataframe(df.head(10), use_container_width=True)
+                
+                # Show statistics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Employees", len(employees))
+                with col2:
+                    roles = df['role'].value_counts()
+                    st.metric("Unique Roles", len(roles))
+                with col3:
+                    avg_experience = df['experience_years'].mean()
+                    st.metric("Avg Experience", f"{avg_experience:.1f} years")
+                
+                # Save to database option
+                st.subheader("💾 Save to Database")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("💾 Save All Employees", type="primary"):
+                        try:
+                            # Get current user if logged in
+                            username = st.session_state.get('username', None)
+                            saved_count = save_employees_to_database_with_upload(employees, username)
+                            st.success(f"✅ Successfully saved {saved_count} employees to database!")
+                            add_notification(f"Uploaded {saved_count} employees", "success", "👥")
+                        except Exception as e:
+                            st.error(f"❌ Error saving to database: {str(e)}")
+                
+                with col2:
+                    if st.button("🔄 Replace Existing Data"):
+                        try:
+                            username = st.session_state.get('username', None)
+                            saved_count = save_employees_to_database_with_upload(employees, username)
+                            st.success(f"✅ Successfully replaced database with {saved_count} employees!")
+                            add_notification(f"Replaced database with {saved_count} employees", "success", "🔄")
+                        except Exception as e:
+                            st.error(f"❌ Error replacing data: {str(e)}")
+                
+                # Download template
+                st.subheader("📄 File Templates")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # CSV template
+                    csv_template = pd.DataFrame({
+                        'name': ['John Doe', 'Jane Smith', 'Bob Johnson'],
+                        'role': ['Software Engineer', 'Product Manager', 'Data Analyst'],
+                        'department': ['Engineering', 'Product', 'Data'],
+                        'location': ['New York', 'San Francisco', 'Remote'],
+                        'email': ['john@company.com', 'jane@company.com', 'bob@company.com'],
+                        'phone': ['+1-555-0101', '+1-555-0102', '+1-555-0103'],
+                        'experience_years': [5.0, 8.0, 3.0],
+                        'skills': ['Python, JavaScript, React', 'Product Management, Agile, SQL', 'Python, SQL, Tableau'],
+                        'current_workload': [7.0, 6.0, 8.0],
+                        'max_capacity': [10.0, 10.0, 10.0],
+                        'salary': [80000, 120000, 70000],
+                        'hire_date': ['2020-01-15', '2018-03-20', '2021-06-10'],
+                        'manager': ['Sarah Wilson', 'Mike Brown', 'Lisa Davis']
+                    })
+                    
+                    csv_buffer = io.StringIO()
+                    csv_template.to_csv(csv_buffer, index=False)
+                    csv_data = csv_buffer.getvalue()
+                    
+                    st.download_button(
+                        label="📥 Download CSV Template",
+                        data=csv_data,
+                        file_name="employee_template.csv",
+                        mime="text/csv"
+                    )
+                
+                with col2:
+                    # JSON template
+                    json_template = [
+                        {
+                            "name": "John Doe",
+                            "role": "Software Engineer",
+                            "department": "Engineering",
+                            "location": "New York",
+                            "email": "john@company.com",
+                            "phone": "+1-555-0101",
+                            "experience_years": 5.0,
+                            "skills": ["Python", "JavaScript", "React"],
+                            "current_workload": 7.0,
+                            "max_capacity": 10.0,
+                            "salary": 80000,
+                            "hire_date": "2020-01-15",
+                            "manager": "Sarah Wilson"
+                        },
+                        {
+                            "name": "Jane Smith",
+                            "role": "Product Manager",
+                            "department": "Product",
+                            "location": "San Francisco",
+                            "email": "jane@company.com",
+                            "phone": "+1-555-0102",
+                            "experience_years": 8.0,
+                            "skills": ["Product Management", "Agile", "SQL"],
+                            "current_workload": 6.0,
+                            "max_capacity": 10.0,
+                            "salary": 120000,
+                            "hire_date": "2018-03-20",
+                            "manager": "Mike Brown"
+                        }
+                    ]
+                    
+                    json_data = json.dumps(json_template, indent=2)
+                    
+                    st.download_button(
+                        label="📥 Download JSON Template",
+                        data=json_data,
+                        file_name="employee_template.json",
+                        mime="application/json"
+                    )
+                
+                # Column mapping info
+                st.subheader("🔍 Column Mapping Information")
+                st.info("""
+                **Supported Column Names:**
+                - **Name:** name, employee_name, full_name, first_name, last_name, employee, staff_name
+                - **Role:** role, position, job_title, title, designation, job_role
+                - **Department:** department, dept, team, division, unit
+                - **Location:** location, city, office, site, branch
+                - **Email:** email, email_address, e-mail, contact_email
+                - **Phone:** phone, phone_number, mobile, contact, telephone
+                - **Experience:** experience_years, experience, years_experience, exp_years, years, seniority
+                - **Skills:** skills, skill_set, competencies, expertise, technologies
+                - **Workload:** current_workload, workload, current_load, load, capacity_used
+                - **Capacity:** max_capacity, capacity, max_workload, max_load
+                - **Salary:** salary, compensation, pay, wage, income
+                - **Hire Date:** hire_date, start_date, joining_date, employment_date, date_hired
+                - **Manager:** manager, supervisor, reporting_to, boss, lead
+                """)
+                
+            except Exception as e:
+                st.error(f"❌ Error processing file: {str(e)}")
+                st.info("Please check your file format and try again.")
+    
+    with tab4:
         st.subheader("📈 Analytics")
         
         emp_df = get_employees_from_database()
@@ -5862,7 +6246,7 @@ def show_employee_management():
         else:
             st.info("No employee data available for analytics.")
     
-    with tab4:
+    with tab5:
         st.subheader("⚙️ Settings")
         
         # Employee data management

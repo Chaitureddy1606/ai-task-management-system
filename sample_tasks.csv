@@ -1,0 +1,11 @@
+title,description,category,priority,urgency_score,complexity_score,business_impact,estimated_hours,days_until_deadline,status
+Fix login bug,User cannot login with valid credentials,bug,high,8,6,7,4,3,pending
+Add user dashboard,Create new dashboard for user management,feature,medium,5,8,6,16,7,pending
+Update API documentation,Update REST API documentation with new endpoints,documentation,low,3,4,5,8,14,pending
+Optimize database queries,Improve performance of slow database queries,optimization,high,9,7,8,12,5,pending
+Design mobile app,Create UI/UX design for mobile application,design,medium,6,9,7,24,10,pending
+Implement payment system,Add payment processing functionality,feature,high,9,8,9,32,7,pending
+Fix responsive layout,Make website responsive on mobile devices,bug,medium,5,5,6,6,4,pending
+Add email notifications,Implement email notification system,feature,medium,6,7,6,12,8,pending
+Update security policies,Review and update security policies,documentation,high,8,4,8,4,2,pending
+Create backup system,Implement automated backup system,feature,low,4,6,5,20,14,pending 

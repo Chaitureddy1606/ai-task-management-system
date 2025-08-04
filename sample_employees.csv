@@ -1,0 +1,11 @@
+name,role,department,location,email,phone,experience_years,skills,current_workload,max_capacity,salary,hire_date,manager
+John Doe,Software Engineer,Engineering,New York,john@company.com,+1-555-0101,5.0,"Python, JavaScript, React",7.0,10.0,80000,2020-01-15,Sarah Wilson
+Jane Smith,Product Manager,Product,San Francisco,jane@company.com,+1-555-0102,8.0,"Product Management, Agile, SQL",6.0,10.0,120000,2018-03-20,Mike Brown
+Bob Johnson,Data Analyst,Data,Remote,bob@company.com,+1-555-0103,3.0,"Python, SQL, Tableau",8.0,10.0,70000,2021-06-10,Lisa Davis
+Alice Wilson,UX Designer,Design,Austin,alice@company.com,+1-555-0104,4.0,"Figma, Sketch, User Research",6.0,10.0,85000,2019-09-15,Tom Garcia
+Charlie Brown,DevOps Engineer,Engineering,Seattle,charlie@company.com,+1-555-0105,6.0,"Docker, Kubernetes, AWS",9.0,10.0,95000,2018-11-20,Sarah Wilson
+Diana Prince,Marketing Manager,Marketing,Chicago,diana@company.com,+1-555-0106,7.0,"Digital Marketing, Analytics, SEO",5.0,10.0,90000,2017-05-10,Mark Johnson
+Eve Adams,QA Engineer,Engineering,Remote,eve@company.com,+1-555-0107,4.0,"Selenium, JUnit, Test Automation",7.0,10.0,75000,2020-03-25,Sarah Wilson
+Frank Miller,Sales Representative,Sales,Boston,frank@company.com,+1-555-0108,5.0,"CRM, Sales Strategy, Negotiation",6.0,10.0,65000,2019-01-15,Patricia Lee
+Grace Kelly,HR Specialist,Human Resources,Denver,grace@company.com,+1-555-0109,6.0,"Recruitment, Employee Relations, HRIS",5.0,10.0,70000,2018-07-30,Robert Chen
+Henry Ford,Financial Analyst,Finance,Portland,henry@company.com,+1-555-0110,4.0,"Excel, Financial Modeling, Analysis",8.0,10.0,80000,2020-08-12,Amanda White 

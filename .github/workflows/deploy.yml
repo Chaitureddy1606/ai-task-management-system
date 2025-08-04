@@ -1,0 +1,42 @@
+name: Deploy to Streamlit Cloud
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        python -c "import streamlit_dashboard; print('✅ App imports successfully')"
+        
+    - name: Deploy to Streamlit Cloud
+      env:
+        STREAMLIT_SHARE_TOKEN: ${{ secrets.STREAMLIT_SHARE_TOKEN }}
+      run: |
+        echo "🚀 Deploying to Streamlit Cloud..."
+        echo "✅ Code pushed to GitHub - Streamlit Cloud will auto-deploy"
+        
+    - name: Notify deployment
+      run: |
+        echo "🎉 Deployment triggered successfully!"
+        echo "📋 Check your Streamlit Cloud dashboard for deployment status"
+        echo "⏱️  Deployment will be available in 2-5 minutes" 

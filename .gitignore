@@ -21,14 +21,38 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# Virtual Environment
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
 
-# IDEs
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+ai_task_management.db
+
+# Model files
+models/
+*.pkl
+*.joblib
+
+# Data files
+data/
+temp/
+tmp/
+*.tmp
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -44,39 +68,23 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
 # Logs
-*.log
 logs/
+*.log
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# API Keys and sensitive data
-.env
-config_local.py
+# Configuration files with sensitive data
+config.py
 secrets.py
+config_local.py
 
-# Model files
-*.pkl
-*.joblib
-models/
-
-# Data files
-*.csv
-*.xlsx
-*.xls
-data/
+# Test files
+test_*.py
+*_test.py
 
 # Temporary files
-temp/
-tmp/
 *.tmp
-
-# Streamlit
-.streamlit/
-
-# Jupyter Notebooks
-.ipynb_checkpoints/
-*.ipynb 
+*.temp 
