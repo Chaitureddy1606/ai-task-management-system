@@ -86,25 +86,178 @@ else:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Add src directory to path for imports
-sys.path.append('src')
-try:
-    from src.utils import load_employee_profiles, connect_db, create_tasks_table
-    from src.preprocessing import TaskDataPreprocessor
-    from src.priority_model import TaskPriorityModel
-    from src.classifier import TaskClassifier
-    from src.task_assigner import IntelligentTaskAssigner
-    from src.feature_engineering import TaskFeatureEngineer
-except ImportError as e:
-    st.error(f"❌ Error importing required modules: {e}")
-    st.info("Please ensure all required files are present in the repository")
+# Database initialization function for Streamlit Cloud
+def initialize_database_safe():
+    """Initialize database with proper error handling for Streamlit Cloud"""
+    try:
+        # Use a timeout and proper connection handling for Streamlit Cloud
+        conn = sqlite3.connect('ai_task_management.db', timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL")  # Use WAL mode for better concurrency
+        conn.execute("PRAGMA synchronous=NORMAL")  # Faster writes
+        conn.execute("PRAGMA cache_size=10000")  # Increase cache size
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second timeout
+        cursor = conn.cursor()
+        
+        # Create basic tables
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                category TEXT,
+                priority TEXT,
+                urgency_score INTEGER,
+                complexity_score INTEGER,
+                business_impact INTEGER,
+                estimated_hours REAL,
+                days_until_deadline INTEGER,
+                status TEXT DEFAULT 'pending',
+                assigned_to TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS employees (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                role TEXT,
+                skills TEXT,
+                expertise_areas TEXT,
+                preferred_task_types TEXT,
+                current_workload INTEGER,
+                max_capacity INTEGER,
+                experience_years INTEGER,
+                location TEXT,
+                availability TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                role TEXT DEFAULT 'user',
+                department TEXT DEFAULT 'General',
+                is_active BOOLEAN DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_login TEXT
+            )
+        """)
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"❌ Database initialization failed: {e}")
+        return False
 
-# Import the main dashboard function
-try:
-    from streamlit_dashboard import main
-    # Run the main application
-    if __name__ == "__main__":
-        main()
-except Exception as e:
-    st.error(f"❌ Error running application: {e}")
-    st.info("Please check the application logs for more details") 
+# Simple main function for Streamlit Cloud
+def main_simple():
+    """Simple main function for Streamlit Cloud deployment"""
+    
+    # Initialize database first
+    if not initialize_database_safe():
+        st.error("❌ Failed to initialize database. Please refresh the page.")
+        return
+    
+    # Initialize session state
+    if 'is_authenticated' not in st.session_state:
+        st.session_state.is_authenticated = False
+    
+    if not st.session_state.is_authenticated:
+        # Show simple login
+        st.title("🤖 AI Task Management System")
+        st.markdown("---")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🔐 Login")
+            username = st.text_input("Username", key="login_username")
+            password = st.text_input("Password", type="password", key="login_password")
+            
+            if st.button("Login", key="login_btn"):
+                if username == "admin" and password == "admin123":
+                    st.session_state.is_authenticated = True
+                    st.session_state.current_user = username
+                    st.session_state.user_role = "admin"
+                    st.success("✅ Login successful!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid credentials. Use admin/admin123")
+        
+        with col2:
+            st.subheader("📝 Quick Start")
+            st.info("""
+            **Demo Credentials:**
+            - Username: `admin`
+            - Password: `admin123`
+            
+            **Features Available:**
+            - Task Management
+            - Employee Assignment
+            - AI-Powered Recommendations
+            - Analytics Dashboard
+            """)
+    else:
+        # Show main dashboard
+        st.title("🤖 AI Task Management System")
+        
+        # Sidebar
+        with st.sidebar:
+            st.markdown("### 👤 User Info")
+            st.write(f"**User:** {st.session_state.current_user}")
+            st.write(f"**Role:** {st.session_state.user_role}")
+            
+            if st.button("🚪 Logout"):
+                st.session_state.is_authenticated = False
+                st.rerun()
+        
+        # Main content
+        st.markdown("### 📊 Dashboard")
+        
+        # Sample data
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Tasks", "25", "+5")
+        
+        with col2:
+            st.metric("Completed", "18", "+3")
+        
+        with col3:
+            st.metric("In Progress", "5", "-2")
+        
+        with col4:
+            st.metric("Pending", "2", "+1")
+        
+        # Sample chart
+        st.markdown("### 📈 Task Status Overview")
+        data = {
+            'Status': ['Completed', 'In Progress', 'Pending', 'Overdue'],
+            'Count': [18, 5, 2, 1]
+        }
+        df = pd.DataFrame(data)
+        
+        fig = px.pie(df, values='Count', names='Status', title="Task Distribution")
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Sample table
+        st.markdown("### 📋 Recent Tasks")
+        sample_tasks = pd.DataFrame({
+            'Task': ['Design UI Mockups', 'Database Optimization', 'API Integration', 'Testing'],
+            'Priority': ['High', 'Medium', 'High', 'Low'],
+            'Status': ['In Progress', 'Completed', 'Pending', 'Completed'],
+            'Assignee': ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']
+        })
+        st.dataframe(sample_tasks, use_container_width=True)
+
+# Run the application
+if __name__ == "__main__":
+    main_simple() 
