@@ -4178,152 +4178,157 @@ def create_drag_drop_upload():
     """, unsafe_allow_html=True)
 
 def show_upload_page():
-    """Show file upload page with drag and drop"""
+    """Show file upload page with drag and drop and manual upload"""
     st.header("📁 Upload Data")
     
-    # Create drag and drop upload area
-    create_drag_drop_upload()
+    # Create tabs for different upload methods
+    tab1, tab2 = st.tabs(["🎯 Drag & Drop", "📁 Manual Upload"])
     
-    # Regular file uploader as fallback
-    uploaded_files = st.file_uploader(
-        "Choose files",
-        type=['csv', 'json', 'xlsx', 'xls'],
-        accept_multiple_files=True,
-        help="Upload any CSV format - system will automatically adapt to your data structure"
-    )
+    with tab1:
+        st.subheader("🎯 Drag & Drop Upload")
+        st.info("Drag and drop your files here for automatic processing")
+        
+        # Create drag and drop upload area
+        create_drag_drop_upload()
+        
+        # Regular file uploader as fallback for drag and drop
+        uploaded_files_drag = st.file_uploader(
+            "Or click here to browse files",
+            type=['csv', 'json', 'xlsx', 'xls'],
+            accept_multiple_files=True,
+            key="drag_drop_uploader",
+            help="Drag and drop files here or click to browse"
+        )
+        
+        if uploaded_files_drag:
+            process_uploaded_files(uploaded_files_drag, "Drag & Drop")
     
-    if uploaded_files:
-        st.success(f"📁 Uploaded {len(uploaded_files)} file(s)")
+    with tab2:
+        st.subheader("📁 Manual Upload")
+        st.info("Use the manual upload button below to select your files")
         
-        # Process each uploaded file
-        all_processed_data = []
+        # Manual upload section with prominent button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("""
+            <div style="text-align: center; padding: 2rem; border: 2px dashed #ccc; border-radius: 10px; background-color: #f8f9fa;">
+                <h3>📁 Manual File Upload</h3>
+                <p>Click the button below to select your files</p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        for uploaded_file in uploaded_files:
-            with st.expander(f"📄 Processing: {uploaded_file.name}"):
-                with st.spinner(f"🔄 Processing {uploaded_file.name}..."):
-                    result_df = process_uploaded_file(uploaded_file)
+        # Manual file uploader
+        uploaded_files_manual = st.file_uploader(
+            "📁 Choose files to upload",
+            type=['csv', 'json', 'xlsx', 'xls'],
+            accept_multiple_files=True,
+            key="manual_uploader",
+            help="Select your CSV, JSON, or Excel files for upload"
+        )
+        
+        if uploaded_files_manual:
+            process_uploaded_files(uploaded_files_manual, "Manual Upload")
+        
+        # Additional manual upload options
+        st.subheader("📋 Upload Options")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📥 Upload Single File", type="primary"):
+                st.info("Use the file uploader above to select your file")
+        
+        with col2:
+            if st.button("📥 Upload Multiple Files", type="secondary"):
+                st.info("Use the file uploader above to select multiple files")
+        
+        # File format information
+        st.subheader("📄 Supported File Formats")
+        st.info("""
+        **Supported Formats:**
+        - **CSV files** (.csv) - Most common format
+        - **JSON files** (.json) - Structured data format
+        - **Excel files** (.xlsx, .xls) - Spreadsheet format
+        
+        **Recommended:** Use CSV format for best compatibility
+        """)
+
+def process_uploaded_files(uploaded_files, upload_method):
+    """Process uploaded files and handle the upload workflow"""
+    if not uploaded_files:
+        return
+    
+    st.success(f"📁 Uploaded {len(uploaded_files)} file(s) via {upload_method}")
+    
+    # Process each uploaded file
+    all_processed_data = []
+    
+    for uploaded_file in uploaded_files:
+        with st.expander(f"📄 Processing: {uploaded_file.name}"):
+            with st.spinner(f"🔄 Processing {uploaded_file.name}..."):
+                result_df = process_uploaded_file(uploaded_file)
+                
+                if result_df is not None:
+                    st.success(f"✅ Successfully processed {len(result_df)} tasks from {uploaded_file.name}")
                     
-                    if result_df is not None:
-                        st.success(f"✅ Successfully processed {len(result_df)} tasks from {uploaded_file.name}")
+                    # Save to user's personal task table
+                    saved_count = 0
+                    for _, row in result_df.iterrows():
+                        task_data = (
+                            row.get('title', 'Unknown Task'),
+                            row.get('description', ''),
+                            row.get('category', 'General'),
+                            row.get('priority', 'Medium'),
+                            row.get('urgency_score', 5),
+                            row.get('complexity_score', 5),
+                            row.get('business_impact', 5),
+                            row.get('estimated_hours', 8.0),
+                            'pending',
+                            row.get('assigned_to', '')
+                        )
                         
-                        # Save to user's personal task table
-                        saved_count = 0
-                        for _, row in result_df.iterrows():
-                            task_data = (
-                                row.get('title', 'Unknown Task'),
-                                row.get('description', ''),
-                                row.get('category', 'General'),
-                                row.get('priority', 'Medium'),
-                                row.get('urgency_score', 5),
-                                row.get('complexity_score', 5),
-                                row.get('business_impact', 5),
-                                row.get('estimated_hours', 8.0),
-                                'pending',
-                                row.get('assigned_to', '')
-                            )
-                            
-                            if save_user_task(st.session_state.current_user, task_data):
-                                saved_count += 1
-                        
-                        st.success(f"💾 Saved {saved_count} tasks to your personal workspace!")
-                        
-                        # Show data preview
-                        st.subheader("📊 Data Preview")
-                        st.dataframe(result_df.head(10), use_container_width=True)
-                        
-                        # Show statistics
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Total Rows", len(result_df))
-                        with col2:
-                            st.metric("Categories", len(result_df['category'].unique()) if 'category' in result_df.columns else 0)
-                        with col3:
-                            st.metric("Avg Urgency", f"{result_df['urgency_score'].mean():.1f}" if 'urgency_score' in result_df.columns else "N/A")
-                        
-                        all_processed_data.append(result_df)
-                    else:
-                        st.error(f"❌ Failed to process {uploaded_file.name}")
+                        if save_user_task(st.session_state.current_user, task_data):
+                            saved_count += 1
+                    
+                    st.success(f"💾 Saved {saved_count} tasks to your personal workspace!")
+                    
+                    # Show data preview
+                    st.subheader("📊 Data Preview")
+                    st.dataframe(result_df.head(10), use_container_width=True)
+                    
+                    # Show statistics
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Rows", len(result_df))
+                    with col2:
+                        st.metric("Categories", len(result_df['category'].unique()) if 'category' in result_df.columns else 0)
+                    with col3:
+                        st.metric("Avg Urgency", f"{result_df['urgency_score'].mean():.1f}" if 'urgency_score' in result_df.columns else "N/A")
+                    
+                    # Add to processed data list
+                    all_processed_data.append(result_df)
+                else:
+                    st.error(f"❌ Failed to process {uploaded_file.name}")
+    
+    # Show summary
+    if all_processed_data:
+        st.success(f"🎉 Successfully processed {len(all_processed_data)} file(s) with {sum(len(df) for df in all_processed_data)} total tasks!")
         
-        # Show combined data table if we have processed data
-        if all_processed_data:
-            st.subheader("📋 All Uploaded Data")
-            
-            # Combine all processed data
-            combined_df = pd.concat(all_processed_data, ignore_index=True)
-            
-            # Show full data table
-            st.dataframe(combined_df, use_container_width=True)
-            
-            # Download processed data
-            csv = combined_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download Processed Data",
-                data=csv,
-                file_name="processed_tasks.csv",
-                mime="text/csv"
-            )
-            
-            # Auto-refresh dashboard
-            st.success("🔄 Dashboard will update automatically with new data!")
-    
-    # Sample data download
-    st.subheader("📋 Sample Data Formats")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📥 Download Standard CSV"):
-            sample_csv = pd.DataFrame({
-                'title': ['Fix Login Bug', 'Design Dashboard', 'Database Optimization'],
-                'description': ['Users cannot login', 'Create new dashboard', 'Optimize queries'],
-                'category': ['bug', 'feature', 'optimization'],
-                'priority': ['high', 'medium', 'low'],
-                'urgency_score': [9, 5, 3],
-                'complexity_score': [6, 8, 4],
-                'business_impact': [8, 6, 4],
-                'estimated_hours': [4.0, 16.0, 8.0],
-                'days_until_deadline': [2, 14, 30]
-            })
-            csv = sample_csv.to_csv(index=False)
-            st.download_button(
-                label="📥 Download standard_format.csv",
-                data=csv,
-                file_name="standard_format.csv",
-                mime="text/csv"
-            )
-    
-    with col2:
-        if st.button("📥 Download Custom CSV"):
-            custom_csv = pd.DataFrame({
-                'task_id': [1, 2, 3],
-                'description': ['User cannot login', 'Create new dashboard', 'Optimize queries'],
-                'deadline': ['2024-01-15', '2024-01-20', '2024-01-25'],
-                'type': ['bug', 'feature', 'optimization'],
-                'importance': ['high', 'medium', 'low'],
-                'submitted_by': ['John', 'Sarah', 'Mike']
-            })
-            csv = custom_csv.to_csv(index=False)
-            st.download_button(
-                label="📥 Download custom_format.csv",
-                data=csv,
-                file_name="custom_format.csv",
-                mime="text/csv"
-            )
-    
-    with col3:
-        if st.button("📥 Download Minimal CSV"):
-            minimal_csv = pd.DataFrame({
-                'name': ['Fix Login Bug', 'Design Dashboard', 'Database Optimization'],
-                'details': ['Users cannot login', 'Create new dashboard', 'Optimize queries'],
-                'group': ['bug', 'feature', 'optimization'],
-                'level': ['high', 'medium', 'low']
-            })
-            csv = minimal_csv.to_csv(index=False)
-            st.download_button(
-                label="📥 Download minimal_format.csv",
-                data=csv,
-                file_name="minimal_format.csv",
-                mime="text/csv"
-            )
+        # Auto-assign tasks if requested
+        if st.button("🤖 Auto-Assign Tasks to Employees", type="primary", key=f"auto_assign_{upload_method}"):
+            with st.spinner("🤖 Auto-assigning tasks to employees..."):
+                enhanced_auto_assign_uploaded_tasks()
+                st.success("✅ Tasks auto-assigned successfully!")
+                add_notification("Tasks auto-assigned to employees", "success", "🤖")
+        
+        # Show assignment table
+        st.subheader("📋 Recent Assignments")
+        recent_assignments = get_recent_assignments_safely()
+        if recent_assignments:
+            st.dataframe(recent_assignments, use_container_width=True)
+        else:
+            st.info("No recent assignments to display")
+    else:
+        st.warning("⚠️ No files were successfully processed")
 
 def update_task_status(task_id, new_status, employee_name):
     """Update task status in the database"""
@@ -6055,12 +6060,109 @@ def show_employee_management():
         st.markdown("### 📁 Upload Employee Data")
         st.info("Upload CSV or JSON files containing employee information. The system will automatically detect and map columns.")
         
-        # File upload
-        uploaded_file = st.file_uploader(
-            "Choose a file",
-            type=['csv', 'json'],
-            help="Upload CSV or JSON file with employee data"
-        )
+        # File upload with manual button
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            uploaded_file = st.file_uploader(
+                "Choose a file",
+                type=['csv', 'json'],
+                help="Upload CSV or JSON file with employee data"
+            )
+        
+        with col2:
+            st.markdown("### 📁 Manual Upload")
+            if st.button("📥 Browse Files", type="primary", key="employee_manual_upload"):
+                st.info("Use the file uploader on the left to select your employee data file")
+        
+        # Additional upload options
+        st.subheader("📋 Upload Options")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("📥 Upload CSV File", key="upload_csv_employees"):
+                st.info("Select a CSV file with employee data")
+        
+        with col2:
+            if st.button("📥 Upload JSON File", key="upload_json_employees"):
+                st.info("Select a JSON file with employee data")
+        
+        with col3:
+            if st.button("📥 Upload Sample Data", key="upload_sample_employees"):
+                st.info("Use the sample files provided below")
+        
+        # Sample data download
+        st.subheader("📄 Sample Employee Data")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # CSV sample
+            csv_sample = pd.DataFrame({
+                'name': ['John Doe', 'Jane Smith', 'Bob Johnson'],
+                'role': ['Software Engineer', 'Product Manager', 'Data Analyst'],
+                'department': ['Engineering', 'Product', 'Data'],
+                'location': ['New York', 'San Francisco', 'Remote'],
+                'email': ['john@company.com', 'jane@company.com', 'bob@company.com'],
+                'phone': ['+1-555-0101', '+1-555-0102', '+1-555-0103'],
+                'experience_years': [5.0, 8.0, 3.0],
+                'skills': ['Python, JavaScript, React', 'Product Management, Agile, SQL', 'Python, SQL, Tableau'],
+                'current_workload': [7.0, 6.0, 8.0],
+                'max_capacity': [10.0, 10.0, 10.0],
+                'salary': [80000, 120000, 70000],
+                'hire_date': ['2020-01-15', '2018-03-20', '2021-06-10'],
+                'manager': ['Sarah Wilson', 'Mike Brown', 'Lisa Davis']
+            })
+            
+            csv_data = csv_sample.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV Sample",
+                data=csv_data,
+                file_name="employee_sample.csv",
+                mime="text/csv"
+            )
+        
+        with col2:
+            # JSON sample
+            json_sample = [
+                {
+                    "name": "John Doe",
+                    "role": "Software Engineer",
+                    "department": "Engineering",
+                    "location": "New York",
+                    "email": "john@company.com",
+                    "phone": "+1-555-0101",
+                    "experience_years": 5.0,
+                    "skills": ["Python", "JavaScript", "React"],
+                    "current_workload": 7.0,
+                    "max_capacity": 10.0,
+                    "salary": 80000,
+                    "hire_date": "2020-01-15",
+                    "manager": "Sarah Wilson"
+                },
+                {
+                    "name": "Jane Smith",
+                    "role": "Product Manager",
+                    "department": "Product",
+                    "location": "San Francisco",
+                    "email": "jane@company.com",
+                    "phone": "+1-555-0102",
+                    "experience_years": 8.0,
+                    "skills": ["Product Management", "Agile", "SQL"],
+                    "current_workload": 6.0,
+                    "max_capacity": 10.0,
+                    "salary": 120000,
+                    "hire_date": "2018-03-20",
+                    "manager": "Mike Brown"
+                }
+            ]
+            
+            json_data = json.dumps(json_sample, indent=2)
+            st.download_button(
+                label="📥 Download JSON Sample",
+                data=json_data,
+                file_name="employee_sample.json",
+                mime="application/json"
+            )
         
         if uploaded_file is not None:
             try:
